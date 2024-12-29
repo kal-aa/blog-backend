@@ -4,7 +4,7 @@ function isValidEmailSyntax(email, res) {
   if (emailRegex.test(email)) {
     return false;
   } else {
-    res.status(400).json({ mssg: "❌ The email syntax is invalid." });
+    res.status(400).json({ mssg: "❌ The email syntax is invalid, try something like: sadkalshayee@gmail.com" });
     return true;
   }
 }

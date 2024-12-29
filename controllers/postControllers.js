@@ -1,4 +1,3 @@
-import db from "../index.js";
 import isValidEmailSyntax from "../reUses/isValidEmail.js";
 import isValidName from "../reUses/isValidName.js";
 
@@ -22,7 +21,7 @@ export const signupRoute = (req, res) => {
         return res
           .status(409)
           .json({
-            mssg: "❌ This email is already taken, please login if it's yours or use another email",
+            mssg: "❌ This email is already taken, please login if it's yours or use another email.",
           });
       }
       req.db

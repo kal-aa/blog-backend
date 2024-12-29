@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { welcomeRoute } from "../controllers/getControllers.js";
+import { loginRoute, welcomeRoute } from "../controllers/getControllers.js";
 import { signupRoute } from "../controllers/postControllers.js";
 
 const route = Router();
@@ -9,6 +9,7 @@ route.post("/sign-up", signupRoute);
 
 //  read
 route.get("/", welcomeRoute);
+route.get("/log-in", loginRoute);
 
 //  update
 
