@@ -1,12 +1,18 @@
-function isValidEmailSyntax(email, res) {
+import constErr from "./constErr.js";
+
+function isValidEmailSyntax(email, next) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if (emailRegex.test(email)) {
     return false;
   } else {
-    res.status(400).json({ mssg: "❌ The email syntax is invalid, try something like: sadkalshayee@gmail.com" });
+    constErr(
+      400,
+      "❌ This email syntax is invalid, try something like: sadkalshayee@gmail.com",
+      next
+    );
     return true;
   }
 }
 
-export default isValidEmailSyntax
+export default isValidEmailSyntax;

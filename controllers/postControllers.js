@@ -1,35 +1,39 @@
+import constErr from "../reUses/constErr.js";
+import hashPassword from "../reUses/hashPassword.js";
 import isValidEmailSyntax from "../reUses/isValidEmail.js";
 import isValidName from "../reUses/isValidName.js";
 
 //  /sign-up
-export const signupRoute = (req, res) => {
+export const signupRoute = async (req, res, next) => {
   const data = req.body;
-  if (isValidEmailSyntax(data.email, res)) {
+  if (isValidEmailSyntax(data.email, next)) {
     return;
-  } else if (isValidName(data.name.replace(/\s+/g, ""), res)) {
+  } else if (isValidName(data.name, next)) {
     return;
   } else if (data.password.includes(" ")) {
     console.error("Password should not include space");
-    return res.status(400).json({ mssg: "Password should not include space" });
+    return constErr(400, "Password should not include space", next);
   }
 
-  req.db
+  try {
+    const hashedPassword = await hashPassword(data.password);
+    data.password = hashedPassword;
+  } catch (error) {
+    console.error("An error occurred during password hashing:", error.message);
+    return constErr(500, "Failed to process password", next);
+  }
+
+  const user = await req.db.collection("users").findOne({ email: data.email });
+  if (user) {
+    return constErr(
+      409,
+      "❌ This email is already taken, please login if it's yours or use another email.",
+      next
+    );
+  }
+  const result = await req.db
     .collection("users")
-    .findOne({ email: data.email })
-    .then((user) => {
-      if (user) {
-        return res
-          .status(409)
-          .json({
-            mssg: "❌ This email is already taken, please login if it's yours or use another email.",
-          });
-      }
-      req.db
-        .collection("users")
-        .insertOne(data)
-        .then((result) => {
-          console.log(result);
-          res.status(201).send(result);
-        });
-    });
+    .insertOne({ ...data, createdAt: new Date(), updatedAt: new Date() });
+  console.log(result);
+  res.status(201).send(result);
 };

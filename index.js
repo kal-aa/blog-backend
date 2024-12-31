@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { connectToDb, getDb } from "./db.js";
 import route from "./routes/indexRoutes.js";
+import error from "./reUses/error.js";
 
 dotenv.config();
 const port = process.env.PORT || 5000;
@@ -31,5 +32,6 @@ app.use((req, res, next) => {
   next();
 });
 app.use(route);
+app.use(error);
 
 export default db;
