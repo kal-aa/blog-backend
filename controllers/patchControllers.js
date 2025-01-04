@@ -11,10 +11,19 @@ export const manageAccountUpdate = async (req, res, next) => {
     const id = req.params.id;
     const data = req.body;
 
-    if (isValidEmailSyntax(data.email, next)) {
+    let imageBuffer = null;
+    let imageMimetype = null;
+
+    if (req.file) {
+      imageBuffer = req.file.buffer;
+      imageMimetype = req.file.mimetype;
+    }
+
+    if (isValidEmailSyntax(data.email, next) || isValidName(data.name, next)) {
       return;
-    } else if (isValidName(data.name, next)) {
-      return;
+    } else if (data.password.includes(" ")) {
+      console.error("Password should not include space");
+      return constErr(400, "Password should not include space", next);
     }
 
     const user = await req.db
@@ -26,39 +35,61 @@ export const manageAccountUpdate = async (req, res, next) => {
       return constErr(404, "User not found.", next);
     }
 
-    try {
-      await comparePassword(data.password, user.password);
-    } catch (error) {
-      if (error.message === "Incorrect password") {
-        return constErr(400, "Incorrect password", next);
-      }
+    //  Check if data is already up-to-date
+    const filteredUser = {
+      name: user.name,
+      email: user.email,
+    };
+    const sanitizedData = {
+      ...data,
+    };
+    if (imageBuffer && imageMimetype) {
+      filteredUser.buffer = user.buffer;
+      filteredUser.mimetype = user.mimetype;
+      sanitizedData.buffer = imageBuffer;
+      sanitizedData.mimetype = imageMimetype;
     }
 
-    const filteredUser = { name: user.name, email: user.email }; // temporarily for the checking process
-    const sanitizedData = { ...data };
     delete sanitizedData.password; //  since we know the password is correct
+    const isEqual = Object.keys(sanitizedData).every((key) => {
+      if (key === "buffer") {
+        console.log("there is buffer on req");
+        const filteredBuffer = filteredUser.buffer
+          ? Buffer.isBuffer(filteredUser.buffer)
+            ? filteredUser.buffer
+            : Buffer.from(filteredUser.buffer, "base64")
+          : null;
 
-    const isEqual = Object.keys(sanitizedData).every(
-      (key) => filteredUser[key] === data[key]
-    );
+        const sanitizedBuffer = sanitizedData.buffer || Buffer.alloc(0);
+
+        return Buffer.compare(filteredBuffer, sanitizedBuffer) === 0;
+      }
+      return filteredUser[key] === sanitizedData[key];
+    });
 
     if (isEqual) {
       console.log("Already up-to-date");
       return res.status(200).json({
-        mssg: "No changes were made; data is already up-to-date.",
+        mssg: "Your data is already up-to-date.",
       });
     }
 
     const hashedPassword = await hashPassword(data.password);
 
+    const updateFields = {
+      ...data,
+      password: hashedPassword,
+      updatedAt: new Date(),
+    };
+    if (imageBuffer && imageMimetype) {
+      updateFields.buffer = imageBuffer;
+      updateFields.mimetype = imageMimetype;
+    }
+
     const update = await req.db.collection("users").updateOne(
       { _id: ObjectId.createFromHexString(id) },
       {
-        $set: {
-          ...data,
-          password: hashedPassword,
-          updatedAt: new Date(),
-        },
+        $set: updateFields,
       }
     );
 
@@ -70,6 +101,72 @@ export const manageAccountUpdate = async (req, res, next) => {
     }
   } catch (error) {
     console.error("Error updating user:", error);
+    return next(new Error());
+  }
+};
+
+//  like dislike comment view
+export const likeDislike = async (req, res, next) => {
+  const { action, userId } = req.body;
+  const { postId } = req.params;
+  const postIdObject = ObjectId.createFromHexString(postId);
+
+  try {
+    const post = await req.db.collection("blogs").findOne({
+      _id: postIdObject,
+    });
+    if (!post) return constErr(404, "Post not found", next);
+
+    switch (action) {
+      case "addLike":
+        await req.db
+          .collection("blogs")
+          .updateOne({ _id: postIdObject }, { $addToSet: { likes: userId } });
+        return res.end();
+
+      case "removeLike":
+        await req.db.collection("blogs").updateOne(
+          { _id: postIdObject },
+          {
+            $pull: { likes: userId },
+          }
+        );
+        return res.end();
+
+      case "addDislike":
+        await req.db
+          .collection("blogs")
+          .updateOne(
+            { _id: ObjectId.createFromHexString(postId) },
+            { $addToSet: { dislikes: userId } }
+          );
+        return res.end();
+
+      case "removeDislike":
+        await req.db
+          .collection("blogs")
+          .updateOne({ _id: postIdObject }, { $pull: { dislikes: userId } });
+        return res.end();
+      case "addView":
+        await req.db
+          .collection("blogs")
+          .updateOne({ _id: postIdObject }, { $addToSet: { views: userId } });
+        return res.end();
+      case "comment":
+        const commentData = {
+          commenterId: userId,
+          comment: req.body.comment,
+          at: new Date(),
+        };
+        await req.db
+          .collection("blogs")
+          .updateOne(
+            { _id: postIdObject },
+            { $push: { comments: commentData } }
+          );
+        return res.end();
+    }
+  } catch (error) {
     return next(new Error());
   }
 };

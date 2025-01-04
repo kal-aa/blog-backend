@@ -8,7 +8,7 @@ function isValidName(name, next) {
   } else {
     constErr(
       400,
-      "❌ The name is invalid. It should only contain letters, no symbols or charaters are allowed.",
+      "❌ Name should only contain letters, no symbols or charaters are allowed.",
       next
     );
     return true;
