@@ -53,7 +53,6 @@ export const manageAccountUpdate = async (req, res, next) => {
     delete sanitizedData.password; //  since we know the password is correct
     const isEqual = Object.keys(sanitizedData).every((key) => {
       if (key === "buffer") {
-        console.log("there is buffer on req");
         const filteredBuffer = filteredUser.buffer
           ? Buffer.isBuffer(filteredUser.buffer)
             ? filteredUser.buffer
@@ -105,17 +104,20 @@ export const manageAccountUpdate = async (req, res, next) => {
   }
 };
 
-//  like dislike comment view
+//  like dislike comment view reply
 export const likeDislike = async (req, res, next) => {
   const { action, userId } = req.body;
   const { postId } = req.params;
   const postIdObject = ObjectId.createFromHexString(postId);
 
   try {
-    const post = await req.db.collection("blogs").findOne({
+    const blogPost = await req.db.collection("blogs").findOne({
       _id: postIdObject,
     });
-    if (!post) return constErr(404, "Post not found", next);
+    const commentPost = await req.db.collection("comments").findOne({
+      _id: postIdObject,
+    });
+    if (!blogPost && !commentPost) return constErr(404, "Post not found", next);
 
     switch (action) {
       case "addLike":
@@ -147,26 +149,71 @@ export const likeDislike = async (req, res, next) => {
           .collection("blogs")
           .updateOne({ _id: postIdObject }, { $pull: { dislikes: userId } });
         return res.end();
+
       case "addView":
         await req.db
           .collection("blogs")
           .updateOne({ _id: postIdObject }, { $addToSet: { views: userId } });
         return res.end();
+
       case "comment":
         const commentData = {
-          commenterId: userId,
+          blogId: ObjectId.createFromHexString(req.body.blogId),
+          commenterId: ObjectId.createFromHexString(userId),
           comment: req.body.comment,
-          at: new Date(),
+          timeStamp: new Date(),
+          likes: [],
+          dislikes: [],
+          replies: [],
+        };
+        await req.db.collection("comments").insertOne(commentData);
+        return res.end();
+
+      case "addCommentLike":
+        await req.db
+          .collection("comments")
+          .updateOne({ _id: postIdObject }, { $addToSet: { likes: userId } });
+        return res.end();
+
+      case "removeCommentLike":
+        await req.db.collection("comments").updateOne(
+          { _id: postIdObject },
+          {
+            $pull: { likes: userId },
+          }
+        );
+        return res.end();
+
+      case "addCommentDislike":
+        await req.db
+          .collection("comments")
+          .updateOne(
+            { _id: ObjectId.createFromHexString(postId) },
+            { $addToSet: { dislikes: userId } }
+          );
+        return res.end();
+
+      case "removeCommentDislike":
+        await req.db
+          .collection("comments")
+          .updateOne({ _id: postIdObject }, { $pull: { dislikes: userId } });
+        return res.end();
+
+      case "reply":
+        const replyData = {
+          replierId: ObjectId.createFromHexString(req.body.userId),
+          reply: req.body.reply,
+          timeStamp: new Date(),
         };
         await req.db
-          .collection("blogs")
+          .collection("comments")
           .updateOne(
             { _id: postIdObject },
-            { $push: { comments: commentData } }
+            { $addToSet: { replies: replyData } }
           );
         return res.end();
     }
   } catch (error) {
-    return next(new Error());
+    return constErr(500, error, next);
   }
 };
