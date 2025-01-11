@@ -2,8 +2,8 @@ import { ObjectId } from "mongodb";
 import constErr from "../reUses/constErr.js";
 import isValidEmailSyntax from "../reUses/isValidEmail.js";
 import hashPassword from "../reUses/hashPassword.js";
-import comparePassword from "../reUses/comparePassword.js";
 import isValidName from "../reUses/isValidName.js";
+import { Filter } from "bad-words";
 
 //  /manage-account-update/:id
 export const manageAccountUpdate = async (req, res, next) => {
@@ -57,7 +57,7 @@ export const manageAccountUpdate = async (req, res, next) => {
           ? Buffer.isBuffer(filteredUser.buffer)
             ? filteredUser.buffer
             : Buffer.from(filteredUser.buffer, "base64")
-          : null;
+          : Buffer.alloc(0);
 
         const sanitizedBuffer = sanitizedData.buffer || Buffer.alloc(0);
 
@@ -117,20 +117,27 @@ export const likeDislike = async (req, res, next) => {
     const commentPost = await req.db.collection("comments").findOne({
       _id: postIdObject,
     });
-    if (!blogPost && !commentPost) return constErr(404, "Post not found", next);
+    const replyPost = await req.db
+      .collection("comments")
+      .findOne({ "replies.replierId": postIdObject });
+    if (!blogPost && !commentPost && !replyPost)
+      return constErr(404, "Post not found", next);
 
     switch (action) {
       case "addLike":
         await req.db
           .collection("blogs")
-          .updateOne({ _id: postIdObject }, { $addToSet: { likes: userId } });
+          .updateOne(
+            { _id: postIdObject },
+            { $addToSet: { likes: ObjectId.createFromHexString(userId) } }
+          );
         return res.end();
 
       case "removeLike":
         await req.db.collection("blogs").updateOne(
           { _id: postIdObject },
           {
-            $pull: { likes: userId },
+            $pull: { likes: ObjectId.createFromHexString(userId) },
           }
         );
         return res.end();
@@ -140,20 +147,26 @@ export const likeDislike = async (req, res, next) => {
           .collection("blogs")
           .updateOne(
             { _id: ObjectId.createFromHexString(postId) },
-            { $addToSet: { dislikes: userId } }
+            { $addToSet: { dislikes: ObjectId.createFromHexString(userId) } }
           );
         return res.end();
 
       case "removeDislike":
         await req.db
           .collection("blogs")
-          .updateOne({ _id: postIdObject }, { $pull: { dislikes: userId } });
+          .updateOne(
+            { _id: postIdObject },
+            { $pull: { dislikes: ObjectId.createFromHexString(userId) } }
+          );
         return res.end();
 
       case "addView":
         await req.db
           .collection("blogs")
-          .updateOne({ _id: postIdObject }, { $addToSet: { views: userId } });
+          .updateOne(
+            { _id: postIdObject },
+            { $addToSet: { views: ObjectId.createFromHexString(userId) } }
+          );
         return res.end();
 
       case "comment":
@@ -172,14 +185,17 @@ export const likeDislike = async (req, res, next) => {
       case "addCommentLike":
         await req.db
           .collection("comments")
-          .updateOne({ _id: postIdObject }, { $addToSet: { likes: userId } });
+          .updateOne(
+            { _id: postIdObject },
+            { $addToSet: { likes: ObjectId.createFromHexString(userId) } }
+          );
         return res.end();
 
       case "removeCommentLike":
         await req.db.collection("comments").updateOne(
           { _id: postIdObject },
           {
-            $pull: { likes: userId },
+            $pull: { likes: ObjectId.createFromHexString(userId) },
           }
         );
         return res.end();
@@ -189,14 +205,17 @@ export const likeDislike = async (req, res, next) => {
           .collection("comments")
           .updateOne(
             { _id: ObjectId.createFromHexString(postId) },
-            { $addToSet: { dislikes: userId } }
+            { $addToSet: { dislikes: ObjectId.createFromHexString(userId) } }
           );
         return res.end();
 
       case "removeCommentDislike":
         await req.db
           .collection("comments")
-          .updateOne({ _id: postIdObject }, { $pull: { dislikes: userId } });
+          .updateOne(
+            { _id: postIdObject },
+            { $pull: { dislikes: ObjectId.createFromHexString(userId) } }
+          );
         return res.end();
 
       case "reply":
@@ -212,8 +231,63 @@ export const likeDislike = async (req, res, next) => {
             { $addToSet: { replies: replyData } }
           );
         return res.end();
+
+      case "removeReply":
+        const x = await req.db.collection("comments").updateOne(
+          { "replies.replierId": postIdObject },
+          {
+            $pull: {
+              replies: {
+                replierId: ObjectId.createFromHexString(userId),
+              },
+            },
+          }
+        );
+        return res.end();
     }
   } catch (error) {
     return constErr(500, error, next);
+  }
+};
+
+//  patch-blog/:id
+export const patchBlog = async (req, res, next) => {
+  const data = req.body;
+  const { id } = req.params;
+
+  try {
+    //  check content
+    const validateContent = (content) => {
+      const filter = new Filter();
+      if (filter.isProfane(content)) {
+        return {
+          valid: false,
+          mssg: "Content contains inappropriate language",
+        };
+      }
+      return { valid: true, mssg: "content is appropriate" };
+    };
+
+    const result = validateContent(`${data.title}, ${data.body}`);
+
+    if (!ObjectId.isValid(data.blogId) && !ObjectId.isValid(id)) {
+      return constErr(400, "Please login or signup again", next);
+    }
+
+    await req.db.collection("blogs").updateOne(
+      {
+        _id: ObjectId.createFromHexString(data.blogId),
+        authorId: ObjectId.createFromHexString(id),
+      },
+      { $set: { title: data.title, body: data.body, updatedAt: new Date() } }
+    );
+    if (!result.valid) {
+      console.error("inappropriate content");
+      return constErr(400, result.mssg, next);
+    }
+    res.end();
+  } catch (error) {
+    console.error("Error updating blog", error);
+    return next(new Error("An error occurred while updating the blog"));
   }
 };

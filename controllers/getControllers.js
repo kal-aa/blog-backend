@@ -103,13 +103,102 @@ export const yourBlogs = async (req, res, next) => {
 
     const blogs = await req.db
       .collection("blogs")
-      .find({ authorId: ObjectId.createFromHexString(id) })
+      .aggregate([
+        { $match: { authorId: ObjectId.createFromHexString(id) } },
+        {
+          $lookup: {
+            from: "comments",
+            localField: "_id",
+            foreignField: "blogId",
+            as: "comments",
+          },
+        },
+      ])
       .toArray();
 
-    const author = { author: user.name };
-    const blogsWithAughor = blogs.map((blog) => Object.assign(blog, author));
+    const commenterIds = blogs.flatMap((blog) => {
+      return blog.comments.map((comment) => comment.commenterId);
+    });
 
-    res.json(blogsWithAughor);
+    const replierIds = blogs.flatMap((blog) => {
+      return blog.comments.flatMap((comment) => {
+        return comment.replies.map((reply) => reply.replierId);
+      });
+    });
+
+    const replierAndCommenters = [...new Set([...commenterIds, ...replierIds])];
+    const users = await req.db
+      .collection("users")
+      .find({ _id: { $in: replierAndCommenters.map((id) => id) } })
+      .toArray();
+
+    const usersMap = users.reduce((acc, user) => {
+      acc[user._id.toString()] = user;
+      return acc;
+    }, {});
+
+    const blogsWithAuthors = blogs.map((blog) => {
+      // Process comments with commenter details
+      const commentsWithDetails = blog.comments.map((comment) => {
+        const commenter = usersMap[comment.commenterId.toString()] || {
+          name: "Unknown user",
+        };
+
+        // Handle commenter image
+        let commenterImageBuffer = null;
+        let commenterImageMimetype = null;
+        if (commenter.buffer && commenter.mimetype) {
+          commenterImageMimetype = commenter.mimetype;
+          if (commenter.buffer._bsontype === "Binary") {
+            commenterImageBuffer = Buffer.from(
+              commenter.buffer.buffer
+            ).toString("base64");
+          } else {
+            commenterImageBuffer = Buffer.from(commenter.buffer, "base64");
+          }
+        }
+
+        const replierWithDetails = comment.replies.map((reply) => {
+          const replier = usersMap[reply.replierId] || {
+            name: "Unknown user",
+          };
+
+          let replierImageBuffer = null;
+          let replierImageMimetype = null;
+          if (replier.buffer && replier.mimetype) {
+            replierImageMimetype = replier.mimetype;
+            if (replier.buffer._bsontype === "Binary") {
+              replierImageBuffer = Buffer.from(replier.buffer.buffer).toString(
+                "base64"
+              );
+            } else {
+              replierImageBuffer = Buffer.from(replier.buffer, "base64");
+            }
+          }
+
+          return {
+            ...reply,
+            replierName: replier.name,
+            buffer: replierImageBuffer,
+            mimetype: replierImageMimetype,
+          };
+        });
+
+        return {
+          ...comment,
+          commenterName: commenter.name,
+          buffer: commenterImageBuffer,
+          mimetype: commenterImageMimetype,
+          replies: replierWithDetails,
+        };
+      });
+      return {
+        ...blog,
+        comments: commentsWithDetails,
+      };
+    });
+
+    res.json(blogsWithAuthors);
   } catch (error) {
     console.error("Error fetching blogs", error);
     return constErr(500, "Error fetching blogs", next);
@@ -120,7 +209,7 @@ export const yourBlogs = async (req, res, next) => {
 export const allBlogs = async (req, res, next) => {
   const { id } = req.params;
   const page = Number(req.query.page) || 0;
-  const bookPerPage = 2;
+  const bookPerPage = 10;
 
   if (!ObjectId.isValid(id)) {
     console.error("Invalid client id, BSONError");
@@ -223,7 +312,7 @@ export const allBlogs = async (req, res, next) => {
 
         const replierWithDetails = comment.replies.map((reply) => {
           const replier = userMap[reply.replierId] || {
-            name: "Unknow user",
+            name: "Unknown user",
           };
 
           let replierImageBuffer = null;

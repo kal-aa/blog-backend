@@ -10,9 +10,14 @@ import {
 import {
   likeDislike,
   manageAccountUpdate,
+  patchBlog,
 } from "../controllers/patchControllers.js";
 import { addBlog, signup } from "../controllers/postControllers.js";
-import { manageAccountDelete } from "../controllers/deleteController.js";
+import {
+  deleteBlog,
+  deleteComment,
+  manageAccountDelete,
+} from "../controllers/deleteController.js";
 
 const route = Router();
 
@@ -34,8 +39,11 @@ route.patch(
   manageAccountUpdate
 );
 route.patch("/likeDislike/:postId", likeDislike);
+route.patch("/patch-blog/:id", patchBlog);
 
 //  delete
 route.delete("/manage-account-delete/:id", manageAccountDelete);
+route.delete("/delete-blog/:id", deleteBlog);
+route.delete("/delete-comment/:id", deleteComment);
 
 export default route;

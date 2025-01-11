@@ -3,6 +3,7 @@ import constErr from "../reUses/constErr.js";
 import hashPassword from "../reUses/hashPassword.js";
 import isValidEmailSyntax from "../reUses/isValidEmail.js";
 import isValidName from "../reUses/isValidName.js";
+import { Filter } from "bad-words";
 
 //  /sign-up
 export const signup = async (req, res, next) => {
@@ -62,6 +63,15 @@ export const addBlog = async (req, res, next) => {
   const id = req.params.id;
   const data = req.body;
 
+  const validateContent = (content) => {
+    const filter = new Filter();
+    if (filter.isProfane(content)) {
+      return { valid: false, mssg: "Content contains inappropriate language" };
+    }
+    return { valid: true, mssg: "content is appropriate" };
+  };
+  const result = validateContent(`${data.title}, ${data.body}`);
+
   if (!ObjectId.isValid(id)) {
     console.error("Invalid id");
     return constErr(
@@ -69,6 +79,9 @@ export const addBlog = async (req, res, next) => {
       "Please login or signup again!, just click the logo",
       next
     );
+  } else if (!result.valid) {
+    console.error("inappropriate content");
+    return constErr(400, result.mssg, next);
   }
 
   //  check whether or not the user exists
