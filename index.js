@@ -33,5 +33,3 @@ app.use((req, res, next) => {
 });
 app.use(route);
 app.use(error);
-
-export default db;
