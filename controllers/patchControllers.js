@@ -110,6 +110,8 @@ export const likeDislike = async (req, res, next) => {
   const { postId } = req.params;
   const postIdObject = ObjectId.createFromHexString(postId);
 
+  console.log("hi");
+
   try {
     const blogPost = await req.db.collection("blogs").findOne({
       _id: postIdObject,
@@ -119,7 +121,8 @@ export const likeDislike = async (req, res, next) => {
     });
     const replyPost = await req.db
       .collection("comments")
-      .findOne({ "replies.replierId": postIdObject });
+      .findOne({ "replies._id": postIdObject });
+
     if (!blogPost && !commentPost && !replyPost)
       return constErr(404, "Post not found", next);
 
@@ -220,6 +223,7 @@ export const likeDislike = async (req, res, next) => {
 
       case "reply":
         const replyData = {
+          _id: new ObjectId(),
           replierId: ObjectId.createFromHexString(req.body.userId),
           reply: req.body.reply,
           timeStamp: new Date(),
@@ -234,11 +238,11 @@ export const likeDislike = async (req, res, next) => {
 
       case "removeReply":
         const x = await req.db.collection("comments").updateOne(
-          { "replies.replierId": postIdObject },
+          { "replies._id": postIdObject },
           {
             $pull: {
               replies: {
-                replierId: ObjectId.createFromHexString(userId),
+                _id: postIdObject,
               },
             },
           }
