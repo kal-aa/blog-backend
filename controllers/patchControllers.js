@@ -10,6 +10,7 @@ export const manageAccountUpdate = async (req, res, next) => {
   try {
     const id = req.params.id;
     const data = req.body;
+    data.email = data.email.toLowerCase();
 
     let imageBuffer = null;
     let imageMimetype = null;

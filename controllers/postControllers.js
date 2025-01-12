@@ -8,6 +8,7 @@ import { Filter } from "bad-words";
 //  /sign-up
 export const signup = async (req, res, next) => {
   const data = req.body;
+  data.email = data.email.toLowerCase();
 
   let imageBuffer = null;
   let imgageMimetype = null;
@@ -34,7 +35,9 @@ export const signup = async (req, res, next) => {
     return constErr(500, "Failed to process password", next);
   }
 
-  const user = await req.db.collection("users").findOne({ email: data.email });
+  const user = await req.db
+    .collection("users")
+    .findOne({ email: data.email.toLowerCase() });
   if (user) {
     return constErr(
       409,

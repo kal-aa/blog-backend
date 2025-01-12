@@ -10,7 +10,9 @@ export const welcome = (req, res, next) => {
 
 //  /log-in
 export const login = async (req, res, next) => {
-  const { password, email } = req.query;
+  let { password, email } = req.query;
+  email = email.toLowerCase();
+
   if (isValidEmailSyntax(email, next)) {
     return;
   } else if (password.includes(" ")) {
