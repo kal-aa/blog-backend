@@ -75,17 +75,20 @@ export const manageAccountUpdate = async (req, res, next) => {
     }
 
     // Check if the the updated email address is already in use
-    const checkEmail = await req.db
+    const checkUser = await req.db
       .collection("users")
-      .findOne({ email: data.email });
-    if (checkEmail && checkEmail._id !== ObjectId.createFromHexString(id)) {
+      .findOne({ email: data.email.toLowerCase() });
+
+    const userId = ObjectId.createFromHexString(id);
+    if (checkUser && !checkUser._id.equals(userId)) {
       console.error("Email already exists");
       return constErr(409, "Email address already in use.", next);
     }
 
     const hashedPassword = await hashPassword(data.password);
     const updateFields = {
-      ...data,
+      email: data.email,
+      name: data.name,
       password: hashedPassword,
       updatedAt: new Date(),
     };
@@ -102,7 +105,6 @@ export const manageAccountUpdate = async (req, res, next) => {
     );
 
     if (update.modifiedCount > 0) {
-      console.log(`user:"${id}" updated data`);
       return res.status(201).end();
     } else {
       return constErr(400, "Failed to update the user", next);
