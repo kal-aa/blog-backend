@@ -22,7 +22,7 @@ export const manageAccountUpdate = async (req, res, next) => {
 
     if (isValidEmailSyntax(data.email, next) || isValidName(data.name, next)) {
       return;
-    } else if (data.password.includes(" ")) {
+    } else if (data.newPassword.includes(" ")) {
       console.error("Password should not include space");
       return constErr(400, "Password should not include space", next);
     }
@@ -37,37 +37,38 @@ export const manageAccountUpdate = async (req, res, next) => {
     }
 
     //  Check if data is already up-to-date
-    const filteredUser = {
+    const filteredUserData = {
       name: user.name,
       email: user.email,
     };
-    const sanitizedData = {
+    const sanitizedUserData = {
       ...data,
     };
     if (imageBuffer && imageMimetype) {
-      filteredUser.buffer = user.buffer;
-      filteredUser.mimetype = user.mimetype;
-      sanitizedData.buffer = imageBuffer;
-      sanitizedData.mimetype = imageMimetype;
+      filteredUserData.buffer = user.buffer;
+      filteredUserData.mimetype = user.mimetype;
+      sanitizedUserData.buffer = imageBuffer;
+      sanitizedUserData.mimetype = imageMimetype;
     }
 
-    delete sanitizedData.password; //  since we know the password is correct
-    const isEqual = Object.keys(sanitizedData).every((key) => {
+    delete sanitizedUserData.Oldpassword;
+    delete sanitizedUserData.newPassword; //  since we know the password is correct
+    const isEqual = Object.keys(sanitizedUserData).every((key) => {
       if (key === "buffer") {
-        const filteredBuffer = filteredUser.buffer
-          ? Buffer.isBuffer(filteredUser.buffer)
-            ? filteredUser.buffer
-            : Buffer.from(filteredUser.buffer, "base64")
+        const filteredBuffer = filteredUserData.buffer
+          ? Buffer.isBuffer(filteredUserData.buffer)
+            ? filteredUserData.buffer
+            : Buffer.from(filteredUserData.buffer, "base64")
           : Buffer.alloc(0);
 
-        const sanitizedBuffer = sanitizedData.buffer || Buffer.alloc(0);
+        const sanitizedBuffer = sanitizedUserData.buffer || Buffer.alloc(0);
 
         return Buffer.compare(filteredBuffer, sanitizedBuffer) === 0;
       }
-      return filteredUser[key] === sanitizedData[key];
+      return filteredUserData[key] === sanitizedUserData[key];
     });
 
-    if (isEqual) {
+    if (isEqual && data.Oldpassword === data.newPassword) {
       console.log("Already up-to-date");
       return res.status(200).json({
         mssg: "Your data is already up-to-date.",
@@ -85,7 +86,7 @@ export const manageAccountUpdate = async (req, res, next) => {
       return constErr(409, "Email address already in use.", next);
     }
 
-    const hashedPassword = await hashPassword(data.password);
+    const hashedPassword = await hashPassword(data.newPassword);
     const updateFields = {
       email: data.email,
       name: data.name,
