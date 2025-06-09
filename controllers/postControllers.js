@@ -1,64 +1,106 @@
 import { ObjectId } from "mongodb";
 import constErr from "../reUses/constErr.js";
 import hashPassword from "../reUses/hashPassword.js";
-import isValidEmailSyntax from "../reUses/isValidEmail.js";
-import isValidName from "../reUses/isValidName.js";
+import comparePassword from "../reUses/comparePassword.js";
 import { Filter } from "bad-words";
+import isInvalidEmailSyntax from "../reUses/isInvalidEmailSyntax.js";
+import isInvalidName from "../reUses/isInvalidName.js";
 
 //  /sign-up
 export const signup = async (req, res, next) => {
-  const data = req.body;
-  data.email = data.email.toLowerCase();
+  let { email, name, password } = req.body;
+  if (!email || !name || !password) {
+    console.error("invalid request object");
+    return constErr(400, "Please fill all the inputs", next);
+  }
+
+  email = email.toLowerCase();
 
   let imageBuffer = null;
-  let imgageMimetype = null;
+  let imageMimetype = null;
 
   if (req.file) {
     imageBuffer = req.file.buffer;
-    imgageMimetype = req.file.mimetype;
+    imageMimetype = req.file.mimetype;
   }
 
-  if (isValidEmailSyntax(data.email, next)) {
+  if (isInvalidEmailSyntax(email, next)) {
     return;
-  } else if (isValidName(data.name, next)) {
+  } else if (isInvalidName(name, next)) {
     return;
-  } else if (data.password.includes(" ")) {
+  } else if (password.includes(" ")) {
     console.error("Password should not include space");
-    return constErr(400, "Password should not include space", next);
+    return constErr(400, "Password cannot include spaces.", next);
   }
 
   try {
-    const hashedPassword = await hashPassword(data.password);
-    data.password = hashedPassword;
+    const hashedPassword = await hashPassword(password);
+    password = hashedPassword;
   } catch (error) {
-    console.error("An error occurred during password hashing:", error.message);
+    console.error("An error occurred during hashing password:", error.message);
     return constErr(500, "Failed to process password", next);
   }
 
   const user = await req.db
     .collection("users")
-    .findOne({ email: data.email.toLowerCase() });
+    .findOne({ email: email.toLowerCase() });
   if (user) {
     return constErr(
       409,
-      "❌ This email is already taken, please login if it's yours or use another email.",
+      "The provided email address is already associated with an account. Log in or use another email to register.",
       next
     );
   }
   const result = await req.db.collection("users").insertOne({
-    ...data,
+    email,
+    name,
+    password,
     buffer: imageBuffer,
-    mimetype: imgageMimetype,
+    mimetype: imageMimetype,
     createdAt: new Date(),
     updatedAt: new Date(),
   });
-  console.log(result);
 
-  const originalName = data.name.trim().split(" ")[0];
-  const firstName =
-    originalName.charAt(0).toUpperCase() + originalName.slice(1);
+  name = name.trim().split(" ")[0];
+  const firstName = name.charAt(0).toUpperCase() + name.slice(1);
 
   res.status(201).send({ ...result, firstName });
+};
+
+//  /log-in
+export const login = async (req, res, next) => {
+  let { password, email } = req.body;
+  if (!password || !email) {
+    console.error("the req body values are not available");
+    return constErr(400, "Please fill the required inputs", next);
+  }
+  email = email.toLowerCase();
+
+  if (isInvalidEmailSyntax(email, next)) {
+    return;
+  } else if (password.includes(" ")) {
+    console.error("Password should not include space");
+    return constErr(400, "Password should not include space", next);
+  }
+
+  try {
+    const user = await req.db.collection("users").findOne({ email });
+    if (!user) {
+      console.error("No user found to to log in as");
+      return constErr(400, `No user found with the email: ${email}.`, next);
+    }
+    await comparePassword(password, user.password);
+
+    const orignialName = user.name.trim().split(" ")[0];
+    const name = orignialName.charAt(0).toUpperCase() + orignialName.slice(1);
+    res.json({ id: user._id.toString(), name });
+  } catch (error) {
+    if (error.message === "Incorrect password, please try again") {
+      return constErr(401, error.message, next);
+    }
+    console.error("Error occured while comparing password");
+    return constErr(500, next);
+  }
 };
 
 //  add-blog/:id

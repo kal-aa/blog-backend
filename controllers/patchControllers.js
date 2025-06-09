@@ -1,8 +1,8 @@
 import { ObjectId } from "mongodb";
 import constErr from "../reUses/constErr.js";
-import isValidEmailSyntax from "../reUses/isValidEmail.js";
+import isInvalidEmailSyntax from "../reUses/isInvalidEmailSyntax.js";
 import hashPassword from "../reUses/hashPassword.js";
-import isValidName from "../reUses/isValidName.js";
+import isInvalidName from "../reUses/isInvalidName.js";
 import { Filter } from "bad-words";
 
 //  /manage-account-update/:id
@@ -20,7 +20,10 @@ export const manageAccountUpdate = async (req, res, next) => {
       imageMimetype = req.file.mimetype;
     }
 
-    if (isValidEmailSyntax(data.email, next) || isValidName(data.name, next)) {
+    if (
+      isInvalidEmailSyntax(data.email, next) ||
+      isInvalidName(data.name, next)
+    ) {
       return;
     } else if (data.newPassword.includes(" ")) {
       console.error("Password should not include space");

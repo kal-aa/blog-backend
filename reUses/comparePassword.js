@@ -5,7 +5,7 @@ async function comparePassword(inputPassword, sqlPassword) {
     const result = await bcrypt.compare(inputPassword, sqlPassword);
     if (!result) {
       console.error("Password Doesn't match");
-      throw new Error("Incorrect password");
+      throw new Error("Incorrect password, please try again");
     }
     console.log("Authenticated!");
     return true;

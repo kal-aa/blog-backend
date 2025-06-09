@@ -1,42 +1,10 @@
 import { ObjectId } from "mongodb";
 import comparePassword from "../reUses/comparePassword.js";
 import constErr from "../reUses/constErr.js";
-import isValidEmailSyntax from "../reUses/isValidEmail.js";
 
 //  /welcome
 export const welcome = (req, res, next) => {
   res.send("This is Kalab: \nWelcome to my blog-backend");
-};
-
-//  /log-in
-export const login = async (req, res, next) => {
-  let { password, email } = req.query;
-  email = email.toLowerCase();
-
-  if (isValidEmailSyntax(email, next)) {
-    return;
-  } else if (password.includes(" ")) {
-    console.error("Password should not include space");
-    return constErr(400, "Password should not include space", next);
-  }
-
-  try {
-    const user = await req.db.collection("users").findOne({ email });
-
-    if (!user) {
-      console.error("No user found to to log in as");
-      return constErr(400, `No user found with the email: ${email}.`, next);
-    }
-    await comparePassword(password, user.password);
-
-    const orignialName = user.name.trim().split(" ")[0];
-    const name = orignialName.charAt(0).toUpperCase() + orignialName.slice(1);
-    res.json({ id: user._id.toString(), name });
-  } catch (error) {
-    if (error.message === "Incorrect password") {
-      return constErr(401, error.message, next);
-    }
-  }
 };
 
 //  /manage-account-password/:id
