@@ -7,7 +7,7 @@ import {
   yourBlogs,
 } from "../controllers/getControllers.js";
 import {
-  likeDislike,
+  interaction,
   manageAccountUpdate,
   patchBlog,
 } from "../controllers/patchControllers.js";
@@ -37,7 +37,7 @@ route.patch(
   upload.single("image"),
   manageAccountUpdate
 );
-route.patch("/likeDislike/:postId", likeDislike);
+route.patch("/interaction/:postId", interaction);
 route.patch("/patch-blog/:id", patchBlog);
 
 //  delete

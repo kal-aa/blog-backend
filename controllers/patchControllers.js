@@ -120,12 +120,10 @@ export const manageAccountUpdate = async (req, res, next) => {
 };
 
 //  like dislike comment view reply
-export const likeDislike = async (req, res, next) => {
+export const interaction = async (req, res, next) => {
   const { action, userId } = req.body;
   const { postId } = req.params;
   const postIdObject = ObjectId.createFromHexString(postId);
-
-  console.log("hi");
 
   try {
     const blogPost = await req.db.collection("blogs").findOne({
@@ -197,8 +195,12 @@ export const likeDislike = async (req, res, next) => {
           dislikes: [],
           replies: [],
         };
-        await req.db.collection("comments").insertOne(commentData);
-        return res.end();
+        const commentResult = await req.db
+          .collection("comments")
+          .insertOne(commentData);
+
+        commentData._id = commentResult.insertedId;
+        return res.status(201).json({ newComment: commentData });
 
       case "addCommentLike":
         await req.db
@@ -207,6 +209,7 @@ export const likeDislike = async (req, res, next) => {
             { _id: postIdObject },
             { $addToSet: { likes: ObjectId.createFromHexString(userId) } }
           );
+
         return res.end();
 
       case "removeCommentLike":
@@ -249,7 +252,8 @@ export const likeDislike = async (req, res, next) => {
             { _id: postIdObject },
             { $addToSet: { replies: replyData } }
           );
-        return res.end();
+
+        return res.status(201).json({ newReply: replyData });
 
       case "removeReply":
         const x = await req.db.collection("comments").updateOne(
