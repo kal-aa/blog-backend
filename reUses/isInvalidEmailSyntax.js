@@ -8,7 +8,7 @@ function isInvalidEmailSyntax(email, next) {
   } else {
     constErr(
       400,
-      "This email syntax is invalid, try something like: sadkalshayee@gmail.com",
+      "This email syntax is invalid, try again",
       next
     );
     return true;

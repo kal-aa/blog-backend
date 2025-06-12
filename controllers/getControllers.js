@@ -7,52 +7,6 @@ export const welcome = (req, res, next) => {
   res.send("This is Kalab: \nWelcome to my blog-backend");
 };
 
-//  /manage-account-password/:id
-export const manageAccountPassword = async (req, res, next) => {
-  const { id } = req.params;
-  const { password } = req.query;
-  if (!ObjectId.isValid(id)) {
-    console.error("Invalid client id, BSONError");
-    return constErr(400, "Please login or signup again", next);
-  }
-
-  try {
-    const user = await req.db
-      .collection("users")
-      .findOne({ _id: ObjectId.createFromHexString(id) });
-
-    if (!user) {
-      console.error("User not found");
-      return constErr(404, "User not found", next);
-    }
-    await comparePassword(password, user.password);
-
-    let imageBuffer = null;
-    let imgageMimetype = null;
-    if (user.buffer && user.mimetype) {
-      imgageMimetype = user.mimetype;
-      if (user.buffer._bsontype === "Binary") {
-        imageBuffer = Buffer.from(user.buffer.buffer).toString("base64");
-      } else {
-        imageBuffer = Buffer.from(user.buffer, "base64");
-      }
-    }
-
-    const data = {
-      buffer: imageBuffer,
-      mimetype: imgageMimetype,
-      ...user,
-      password,
-    };
-
-    res.json(data);
-  } catch (error) {
-    if (error.message === "Incorrect password") {
-      constErr(401, error.message, next);
-    }
-  }
-};
-
 //  /your-blogs/:id
 export const yourBlogs = async (req, res, next) => {
   const { id } = req.params;
