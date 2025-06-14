@@ -268,7 +268,13 @@ export const accountUpdate = async (req, res, next) => {
       return filteredUser[key] === sanitizedUser[key];
     });
 
-    if (isEqual) {
+    const initialImageEmpty = !user.buffer || user.buffer.length === 0;
+    const userRemovedImg = data.removeImage !== "true";
+
+    if (
+      isEqual &&
+      (!userRemovedImg || (isEqual && initialImageEmpty && userRemovedImg))
+    ) {
       console.log("Already up-to-date");
       return res.status(200).json({
         mssg: "No changes were made. Your data is already up to date.",
@@ -290,13 +296,11 @@ export const accountUpdate = async (req, res, next) => {
     const updateFields = {
       email: data.email,
       name: data.name,
+      buffer: imageBuffer,
+      mimetype: imageMimetype,
       password: hashedPassword,
       updatedAt: new Date(),
     };
-    if (imageBuffer && imageMimetype) {
-      updateFields.buffer = imageBuffer;
-      updateFields.mimetype = imageMimetype;
-    }
 
     const update = await req.db.collection("users").updateOne(
       { _id: ObjectId.createFromHexString(id) },
