@@ -269,12 +269,16 @@ export const accountUpdate = async (req, res, next) => {
     });
 
     const initialImageEmpty = !user.buffer || user.buffer.length === 0;
-    const userRemovedImg = data.removeImage !== "true";
+    const userRemovedImg = data.removeImage === "true";
 
-    if (
-      isEqual &&
-      (!userRemovedImg || (isEqual && initialImageEmpty && userRemovedImg))
-    ) {
+    const userWantsToRemoveImage = !initialImageEmpty && userRemovedImg;
+    const userAddedNewImage = !initialImageEmpty && imageBuffer;
+    const userChangedTestInfo = !isEqual;
+
+    const shouldUpdate =
+      userChangedTestInfo || userWantsToRemoveImage || userAddedNewImage;
+
+    if (!shouldUpdate) {
       console.log("Already up-to-date");
       return res.status(200).json({
         mssg: "No changes were made. Your data is already up to date.",
