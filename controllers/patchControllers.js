@@ -4,6 +4,7 @@ import isInvalidEmailSyntax from "../reUses/isInvalidEmailSyntax.js";
 import hashPassword from "../reUses/hashPassword.js";
 import isInvalidName from "../reUses/isInvalidName.js";
 import { Filter } from "bad-words";
+import { validateContent } from "../reUses/validateContent.js";
 
 //  like dislike comment view reply
 export const interaction = async (req, res, next) => {
@@ -71,23 +72,6 @@ export const interaction = async (req, res, next) => {
           );
         return res.end();
 
-      case "comment":
-        const commentData = {
-          blogId: ObjectId.createFromHexString(req.body.blogId),
-          commenterId: ObjectId.createFromHexString(userId),
-          comment: req.body.comment,
-          timeStamp: new Date(),
-          likes: [],
-          dislikes: [],
-          replies: [],
-        };
-        const commentResult = await req.db
-          .collection("comments")
-          .insertOne(commentData);
-
-        commentData._id = commentResult.insertedId;
-        return res.status(201).json({ newComment: commentData });
-
       case "addCommentLike":
         await req.db
           .collection("comments")
@@ -124,35 +108,6 @@ export const interaction = async (req, res, next) => {
             { $pull: { dislikes: ObjectId.createFromHexString(userId) } }
           );
         return res.end();
-
-      case "reply":
-        const replyData = {
-          _id: new ObjectId(),
-          replierId: ObjectId.createFromHexString(req.body.userId),
-          reply: req.body.reply,
-          timeStamp: new Date(),
-        };
-        await req.db
-          .collection("comments")
-          .updateOne(
-            { _id: postIdObject },
-            { $addToSet: { replies: replyData } }
-          );
-
-        return res.status(201).json({ newReply: replyData });
-
-      case "removeReply":
-        const x = await req.db.collection("comments").updateOne(
-          { "replies._id": postIdObject },
-          {
-            $pull: {
-              replies: {
-                _id: postIdObject,
-              },
-            },
-          }
-        );
-        return res.end();
     }
   } catch (error) {
     return constErr(500, error, next);
@@ -165,19 +120,12 @@ export const patchBlog = async (req, res, next) => {
   const { id } = req.params;
 
   try {
-    //  check content
-    const validateContent = (content) => {
-      const filter = new Filter();
-      if (filter.isProfane(content)) {
-        return {
-          valid: false,
-          mssg: "Content contains inappropriate language",
-        };
-      }
-      return { valid: true, mssg: "content is appropriate" };
-    };
+    const result = validateContent(`${data.title}, ${data.body}`, "blog");
 
-    const result = validateContent(`${data.title}, ${data.body}`);
+    if (!result.valid) {
+      console.error("inappropriate content");
+      return constErr(400, result.mssg, next);
+    }
 
     if (!ObjectId.isValid(data.blogId) && !ObjectId.isValid(id)) {
       return constErr(400, "Please login or signup again", next);
@@ -190,10 +138,7 @@ export const patchBlog = async (req, res, next) => {
       },
       { $set: { title: data.title, body: data.body, updatedAt: new Date() } }
     );
-    if (!result.valid) {
-      console.error("inappropriate content");
-      return constErr(400, result.mssg, next);
-    }
+
     res.end();
   } catch (error) {
     console.error("Error updating blog", error);
