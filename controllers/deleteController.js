@@ -1,9 +1,9 @@
 import { ObjectId } from "mongodb";
 import constErr from "../reUses/constErr.js";
 
-//  delete-comment/:id(commentId)
+//  delete-comment/:id
 export const deleteComment = async (req, res, next) => {
-  const id = req.params.id;
+  const { id } = req.params;
 
   try {
     if (!ObjectId.isValid(id)) {
@@ -11,9 +11,25 @@ export const deleteComment = async (req, res, next) => {
       return constErr(400, "Please login or signup again", next);
     }
 
-    await req.db
-      .collection("comments")
-      .deleteOne({ _id: ObjectId.createFromHexString(id) });
+    await req.db.collection("comments").deleteOne({ _id: new ObjectId(id) });
+
+    res.end();
+  } catch (error) {
+    console.error("Error deleting comment");
+  }
+};
+
+//  delete-reply/:id
+export const deleteReply = async (req, res, next) => {
+  const { id } = req.params;
+
+  try {
+    if (!ObjectId.isValid(id)) {
+      console.error("Invalid id");
+      return constErr(400, "Please login or signup again", next);
+    }
+
+    await req.db.collection("replies").deleteOne({ _id: new ObjectId(id) });
 
     res.end();
   } catch (error) {
@@ -24,7 +40,8 @@ export const deleteComment = async (req, res, next) => {
 //  /delete-blog/:id
 export const deleteBlog = async (req, res, next) => {
   const id = req.params.id;
-  const blogId = req.query.blogId;
+  const { blogId } = req.query;
+
   if (!ObjectId.isValid(id) || !ObjectId.isValid(blogId)) {
     console.error("invalid id");
     return constErr(
@@ -33,13 +50,16 @@ export const deleteBlog = async (req, res, next) => {
       next
     );
   }
-
+  await req.db
+    .collection("replies")
+    .deleteMany({ blogId: ObjectId.createFromHexString(blogId) });
   await req.db
     .collection("comments")
     .deleteMany({ blogId: ObjectId.createFromHexString(blogId) });
   await req.db
     .collection("blogs")
     .deleteOne({ _id: ObjectId.createFromHexString(blogId) });
+
   res.end();
 };
 
