@@ -108,11 +108,7 @@ export const addBlog = async (req, res, next) => {
 
     if (!ObjectId.isValid(id)) {
       console.error("Invalid id");
-      return constErr(
-        400,
-        "Please login or signup again!, just click the logo",
-        next
-      );
+      return constErr(400, "Please login or signup again!", next);
     } else if (!result.valid) {
       console.error("inappropriate content");
       return constErr(400, result.mssg, next);

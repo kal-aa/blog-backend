@@ -245,11 +245,14 @@ export const accountUpdate = async (req, res, next) => {
     const updateFields = {
       email: data.email,
       name: data.name,
-      buffer: imageBuffer,
-      mimetype: imageMimetype,
       password: hashedPassword,
       updatedAt: new Date(),
     };
+
+    if ((imageBuffer && imageMimetype) || userRemovedImg) {
+      (updateFields.buffer = imageBuffer),
+        (updateFields.mimetype = imageMimetype);
+    }
 
     const update = await req.db.collection("users").updateOne(
       { _id: ObjectId.createFromHexString(id) },

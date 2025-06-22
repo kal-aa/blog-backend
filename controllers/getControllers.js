@@ -10,6 +10,11 @@ export const welcome = (req, res, next) => {
 //  /your-blogs/:id
 export const yourBlogs = async (req, res, next) => {
   const { id } = req.params;
+  const { page: index } = req.query;
+
+  const page = Number(index) || 0;
+  const blogsPerPage = 5;
+
   if (!ObjectId.isValid(id)) {
     console.error("Invalid client id, BSONError");
     return constErr(400, "Please login or signup again", next);
@@ -18,7 +23,7 @@ export const yourBlogs = async (req, res, next) => {
   try {
     const user = await req.db
       .collection("users")
-      .findOne({ _id: ObjectId.createFromHexString(id) });
+      .find({ _id: new ObjectId(id) });
 
     if (user.length === 0) {
       console.error("User not found");
@@ -27,102 +32,18 @@ export const yourBlogs = async (req, res, next) => {
 
     const blogs = await req.db
       .collection("blogs")
-      .aggregate([
-        { $match: { authorId: ObjectId.createFromHexString(id) } },
-        {
-          $lookup: {
-            from: "comments",
-            localField: "_id",
-            foreignField: "blogId",
-            as: "comments",
-          },
-        },
-      ])
+      .find({ authorId: new ObjectId(id) })
+      .skip(page * blogsPerPage)
+      .limit(blogsPerPage)
+      .sort({ createdAt: -1 })
       .toArray();
 
-    const commenterIds = blogs.flatMap((blog) => {
-      return blog.comments.map((comment) => comment.commenterId);
-    });
+    const totalBlogs = await req.db
+      .collection("blogs")
+      .countDocuments({ authorId: new ObjectId(id) });
+    const totalPages = Math.ceil(totalBlogs / blogsPerPage);
 
-    const replierIds = blogs.flatMap((blog) => {
-      return blog.comments.flatMap((comment) => {
-        return comment.replies.map((reply) => reply.replierId);
-      });
-    });
-
-    const replierAndCommenters = [...new Set([...commenterIds, ...replierIds])];
-    const users = await req.db
-      .collection("users")
-      .find({ _id: { $in: replierAndCommenters.map((id) => id) } })
-      .toArray();
-
-    const usersMap = users.reduce((acc, user) => {
-      acc[user._id.toString()] = user;
-      return acc;
-    }, {});
-
-    const blogsWithAuthors = blogs.map((blog) => {
-      // Process comments with commenter details
-      const commentsWithDetails = blog.comments.map((comment) => {
-        const commenter = usersMap[comment.commenterId.toString()] || {
-          name: "Unknown user",
-        };
-
-        // Handle commenter image
-        let commenterImageBuffer = null;
-        let commenterImageMimetype = null;
-        if (commenter.buffer && commenter.mimetype) {
-          commenterImageMimetype = commenter.mimetype;
-          if (commenter.buffer._bsontype === "Binary") {
-            commenterImageBuffer = Buffer.from(
-              commenter.buffer.buffer
-            ).toString("base64");
-          } else {
-            commenterImageBuffer = Buffer.from(commenter.buffer, "base64");
-          }
-        }
-
-        const replierWithDetails = comment.replies.map((reply) => {
-          const replier = usersMap[reply.replierId] || {
-            name: "Unknown user",
-          };
-
-          let replierImageBuffer = null;
-          let replierImageMimetype = null;
-          if (replier.buffer && replier.mimetype) {
-            replierImageMimetype = replier.mimetype;
-            if (replier.buffer._bsontype === "Binary") {
-              replierImageBuffer = Buffer.from(replier.buffer.buffer).toString(
-                "base64"
-              );
-            } else {
-              replierImageBuffer = Buffer.from(replier.buffer, "base64");
-            }
-          }
-
-          return {
-            ...reply,
-            replierName: replier.name,
-            buffer: replierImageBuffer,
-            mimetype: replierImageMimetype,
-          };
-        });
-
-        return {
-          ...comment,
-          commenterName: commenter.name,
-          buffer: commenterImageBuffer,
-          mimetype: commenterImageMimetype,
-          replies: replierWithDetails,
-        };
-      });
-      return {
-        ...blog,
-        comments: commentsWithDetails,
-      };
-    });
-
-    res.json(blogsWithAuthors);
+    res.json({ blogs, totalPages });
   } catch (error) {
     console.error("Error fetching blogs", error);
     return constErr(500, "Error fetching blogs", next);
@@ -156,6 +77,7 @@ export const getBlogs = async (req, res, next) => {
       .find()
       .skip(page * blogsPerPage)
       .limit(blogsPerPage)
+      .sort({ createdAt: -1 })
       .toArray();
 
     const authorIds = blogs.map((blog) => blog.authorId);
