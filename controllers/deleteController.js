@@ -11,6 +11,9 @@ export const deleteComment = async (req, res, next) => {
       return constErr(400, "Please login or signup again", next);
     }
 
+    await req.db
+      .collection("replies")
+      .deleteMany({ commentId: new ObjectId(id) });
     await req.db.collection("comments").deleteOne({ _id: new ObjectId(id) });
 
     res.end();
