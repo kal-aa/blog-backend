@@ -132,7 +132,6 @@ export const addBlog = async (req, res, next) => {
       authorId: ObjectId.createFromHexString(id),
       createdAt: new Date(),
       updatedAt: new Date(),
-      comments: [],
       likes: [],
       dislikes: [],
       views: [],
@@ -177,7 +176,6 @@ export const addComment = async (req, res, next) => {
       comment,
       likes: [],
       dislikes: [],
-      replies: [],
       timeStamp: new Date(),
     };
 
