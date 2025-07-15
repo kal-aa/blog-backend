@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { connectToDb, getDb } from "./db.js";
 import route from "./routes/indexRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
 import error from "./reUses/error.js";
 
 dotenv.config();
@@ -31,5 +32,8 @@ app.use((req, res, next) => {
   req.db = db;
   next();
 });
+
+app.use("/auth", authRoutes);
+
 app.use(route);
 app.use(error);

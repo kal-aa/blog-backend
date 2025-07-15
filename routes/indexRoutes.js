@@ -6,6 +6,7 @@ import {
   getRepliesForComment,
   welcome,
   yourBlogs,
+  accountData,
 } from "../controllers/getControllers.js";
 import {
   interaction,
@@ -13,10 +14,7 @@ import {
   patchBlog,
 } from "../controllers/patchControllers.js";
 import {
-  signup,
-  login,
   addBlog,
-  accountAuthenticate,
   addReply,
   addComment,
 } from "../controllers/postControllers.js";
@@ -26,16 +24,14 @@ import {
   accountDelete,
   deleteReply,
 } from "../controllers/deleteController.js";
+import { authenticate } from "../middleware/auth.js";
 
 const route = Router();
 
 //  create
-route.post("/sign-up", upload.single("image"), signup);
-route.post("/log-in", login);
 route.post("/add-blog/:id", addBlog);
 route.post("/add-comment/:id", addComment);
 route.post("/add-reply/:id", addReply);
-route.post("/account/authenticate/:id", accountAuthenticate);
 
 //  read
 route.get("/", welcome);
@@ -43,6 +39,7 @@ route.get("/your-blogs/:id", yourBlogs);
 route.get("/blogs/:id", getBlogs);
 route.get("/blogs/:id/comments", getCommentsForBlog);
 route.get("/comments/:id/replies", getRepliesForComment);
+route.get("/account/data/:id", authenticate, accountData);
 
 //  update
 route.patch("/account/update/:id", upload.single("image"), accountUpdate);
