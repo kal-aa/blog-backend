@@ -234,3 +234,46 @@ export const getRepliesForComment = async (req, res, next) => {
     return constErr(500, "Error fetching replies", next);
   }
 };
+
+//  /account/data/:id
+export const accountData = async (req, res, next) => {
+  const { id } = req.params;
+
+  if (!ObjectId.isValid(id)) {
+    console.error("Invalid client id, BSONError");
+    return constErr(400, "Please login or signup again", next);
+  }
+
+  try {
+    const user = await req.db
+      .collection("users")
+      .findOne({ _id: new ObjectId(id) });
+
+    if (!user) {
+      console.error("User not found");
+      return constErr(404, "User not found", next);
+    }
+
+    let imageBuffer = null;
+    let imageMimetype = null;
+    if (user.buffer && user.mimetype) {
+      imageMimetype = user.mimetype;
+      if (user.buffer._bsontype === "Binary") {
+        imageBuffer = Buffer.from(user.buffer.buffer).toString("base64");
+      } else {
+        imageBuffer = Buffer.from(user.buffer, "base64");
+      }
+    }
+
+    const data = {
+      buffer: imageBuffer,
+      mimetype: imageMimetype,
+      ...user,
+    };
+
+    res.json(data);
+  } catch (error) {
+    console.error("Error sending data", error);
+    constErr(500, error, next);
+  }
+};
