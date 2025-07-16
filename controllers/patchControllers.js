@@ -149,8 +149,7 @@ export const patchBlog = async (req, res, next) => {
 //  /account/update/:id
 export const accountUpdate = async (req, res, next) => {
   const { id } = req.params;
-  const data = req.body;
-  data.email = data.email.toLowerCase();
+  const { name, removeImage } = req.body;
 
   try {
     let imageBuffer = null;
@@ -161,20 +160,13 @@ export const accountUpdate = async (req, res, next) => {
       imageMimetype = req.file.mimetype;
     }
 
-    if (
-      isInvalidEmailSyntax(data.email, next) ||
-      isInvalidName(data.name, next)
-    ) {
+    if (isInvalidName(name, next)) {
       return;
-    }
-    if (data.newPassword.includes(" ")) {
-      console.error("Password should not include space");
-      return constErr(400, "Password should not include space", next);
     }
 
     const user = await req.db
       .collection("users")
-      .findOne({ _id: ObjectId.createFromHexString(id) });
+      .findOne({ _id: new ObjectId(id) });
 
     if (!user) {
       console.error("User not found");
@@ -184,11 +176,9 @@ export const accountUpdate = async (req, res, next) => {
     //  Check if data is already up-to-date
     const filteredUser = {
       name: user.name,
-      email: user.email,
     };
     const sanitizedUser = {
-      name: data.name,
-      email: data.email,
+      name: name,
     };
 
     if (imageBuffer && imageMimetype) {
@@ -214,7 +204,7 @@ export const accountUpdate = async (req, res, next) => {
     });
 
     const initialImageEmpty = !user.buffer || user.buffer.length === 0;
-    const userRemovedImg = data.removeImage === "true";
+    const userRemovedImg = removeImage === "true";
 
     const userWantsToRemoveImage = !initialImageEmpty && userRemovedImg;
     const userAddedNewImage = !initialImageEmpty && imageBuffer;
@@ -230,22 +220,8 @@ export const accountUpdate = async (req, res, next) => {
       });
     }
 
-    // Check if the the updated email address is already in use
-    const checkUser = await req.db
-      .collection("users")
-      .findOne({ email: data.email });
-
-    const userId = ObjectId.createFromHexString(id);
-    if (checkUser && !checkUser._id.equals(userId)) {
-      console.error("Email already exists");
-      return constErr(409, "Email address already in use.", next);
-    }
-
-    const hashedPassword = await hashPassword(data.newPassword);
     const updateFields = {
-      email: data.email,
-      name: data.name,
-      password: hashedPassword,
+      name: name,
       updatedAt: new Date(),
     };
 
@@ -255,7 +231,7 @@ export const accountUpdate = async (req, res, next) => {
     }
 
     const update = await req.db.collection("users").updateOne(
-      { _id: ObjectId.createFromHexString(id) },
+      { _id: new ObjectId(id) },
       {
         $set: updateFields,
       }
