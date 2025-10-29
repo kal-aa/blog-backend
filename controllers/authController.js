@@ -29,7 +29,7 @@ export const signupHandler = async (req, res, next) => {
         createdAt: new Date(),
       };
 
-      if ((imageBuffer, imageMimetype)) {
+      if ((imageBuffer && imageMimetype)) {
         (newUser.buffer = imageBuffer), (newUser.mimetype = imageMimetype);
       }
 
