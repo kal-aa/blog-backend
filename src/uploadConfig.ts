@@ -1,6 +1,6 @@
-import multer from "multer";
+import multer, { StorageEngine } from "multer";
 
-const storage = multer.memoryStorage();
+const storage: StorageEngine = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 },

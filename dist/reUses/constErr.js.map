@@ -1,0 +1,1 @@
+{"version":3,"file":"constErr.js","sourceRoot":"","sources":["../../src/reUses/constErr.ts"],"names":[],"mappings":"AAGA,SAAS,QAAQ,CAAC,MAAc,EAAE,OAAe,EAAE,IAAkB;IACnE,MAAM,GAAG,GAAgB,IAAI,KAAK,CAAC,OAAO,CAAC,CAAC;IAC5C,GAAG,CAAC,MAAM,GAAG,MAAM,CAAC;IACpB,IAAI,CAAC,GAAG,CAAC,CAAC;AACZ,CAAC;AAED,eAAe,QAAQ,CAAC"}
