@@ -1,4 +1,6 @@
-const error = (err, req, res, next) => {
+import { ErrorHandlerParams } from "../types/miscellaneous.js";
+
+const error: ErrorHandlerParams = (err, req, res, next) => {
   console.error(err.stack);
   if (err.code === "LIMIT_FILE_SIZE") {
     return res.status(400).json({ mssg: "File size should be bellow 5MB" });

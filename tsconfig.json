@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    /* === Directories === */
+    "rootDir": "./src",
+    "outDir": "./dist",
+
+    /* === Language & Module System === */
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "types": ["node"],
+
+    /* === Type Safety === */
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+
+    /* === Convenience & Interop === */
+    "esModuleInterop": true,
+    "sourceMap": true,
+    "declaration": true
+  },
+
+  /* Include all source files */
+  "include": ["src"],
+
+  /* Exclude compiled output and node modules */
+  "exclude": ["node_modules", "dist"]
+}
