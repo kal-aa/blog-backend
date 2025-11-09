@@ -11,12 +11,7 @@ import { getBlogs, getCommentsForBlog, getRepliesForComment, welcome, yourBlogs,
 //   addReply,
 //   addComment,
 // } from "../controllers/postControllers.js";
-// import {
-//   deleteBlog,
-//   deleteComment,
-//   accountDelete,
-//   deleteReply,
-// } from "../controllers/deleteController.js";
+import { deleteBlog, deleteComment, accountDelete, deleteReply, } from "../controllers/deleteController.js";
 const route = Router();
 // //  create
 // route.post("/add-blog/:id", addBlog);
@@ -34,9 +29,9 @@ route.get("/account/data/:id", authenticate, accountData);
 // route.patch("/interaction/:postId", interaction);
 // route.patch("/patch-blog/:id", patchBlog);
 // //  delete
-// route.delete("/account/delete/:id", accountDelete);
-// route.delete("/delete-blog/:id", deleteBlog);
-// route.delete("/delete-comment/:id", deleteComment);
-// route.delete("/delete-reply/:id", deleteReply);
+route.delete("/account/delete/:id", accountDelete);
+route.delete("/delete-blog/:id", deleteBlog);
+route.delete("/delete-comment/:id", deleteComment);
+route.delete("/delete-reply/:id", deleteReply);
 export default route;
 //# sourceMappingURL=indexRoutes.js.map
