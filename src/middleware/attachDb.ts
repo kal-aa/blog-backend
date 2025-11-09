@@ -1,8 +1,7 @@
-import { NextFunction } from "express";
 import { getDb } from "../db.js";
 import { ReqResNext } from "../types/miscellaneous.js";
 
-export const attachDb: ReqResNext<void> = (req, res, next) => {
+export const attachDb: ReqResNext = (req, res, next) => {
   try {
     req.db = getDb();
     next();

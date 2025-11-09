@@ -1,46 +1,52 @@
 import { ObjectId } from "mongodb";
-import comparePassword from "../reUses/comparePassword.js";
 import constErr from "../reUses/constErr.js";
+import {
+  Blog,
+  Comment,
+  Reply,
+  ReqResNext,
+  User,
+} from "../types/miscellaneous.js";
 
-//  /welcome
-export const welcome = (req, res, next) => {
+// GET /welcome
+export const welcome: ReqResNext = (req, res, next) => {
   res.send("This is Kalab: \nWelcome to my blog-backend");
 };
 
-//  /your-blogs/:id
-export const yourBlogs = async (req, res, next) => {
+// GET /your-blogs/:id
+export const yourBlogs: ReqResNext = async (req, res, next) => {
   const { id } = req.params;
   const { page: index } = req.query;
 
   const page = Number(index) || 0;
   const blogsPerPage = 5;
 
-  if (!ObjectId.isValid(id)) {
+  if (!id || !ObjectId.isValid(id)) {
     console.error("Invalid client id, BSONError");
     return constErr(400, "Please login or signup again", next);
   }
 
   try {
-    const user = await req.db
-      .collection("users")
-      .find({ _id: new ObjectId(id) });
+    const db = req.db!;
+    const authorId = new ObjectId(id);
+    const user = await db.collection("users").findOne({ _id: authorId });
 
-    if (user.length === 0) {
+    if (!user) {
       console.error("User not found");
       return constErr(404, "User not found", next);
     }
 
-    const blogs = await req.db
+    const blogs = await db
       .collection("blogs")
-      .find({ authorId: new ObjectId(id) })
+      .find({ authorId })
       .skip(page * blogsPerPage)
       .limit(blogsPerPage)
       .sort({ createdAt: -1 })
       .toArray();
 
-    const totalBlogs = await req.db
+    const totalBlogs = await db
       .collection("blogs")
-      .countDocuments({ authorId: new ObjectId(id) });
+      .countDocuments({ authorId });
     const totalPages = Math.ceil(totalBlogs / blogsPerPage);
 
     res.json({ blogs, totalPages });
@@ -51,20 +57,20 @@ export const yourBlogs = async (req, res, next) => {
 };
 
 // GET /blogs/:id
-export const getBlogs = async (req, res, next) => {
+export const getBlogs: ReqResNext = async (req, res, next) => {
   const { id } = req.params;
-
   const page = Number(req.query.page) || 0;
   const blogsPerPage = 10;
 
-  if (!ObjectId.isValid(id)) {
+  if (!id || !ObjectId.isValid(id)) {
     console.error("Invalid client id, BSONError");
     return constErr(400, "Please login or signup again", next);
   }
 
   try {
-    const checkUser = await req.db
-      .collection("users")
+    const db = req.db!;
+    const checkUser = await db
+      .collection<User>("users")
       .findOne({ _id: ObjectId.createFromHexString(id) });
 
     if (!checkUser) {
@@ -72,8 +78,8 @@ export const getBlogs = async (req, res, next) => {
       return constErr(400, "Please login or signup again", next);
     }
 
-    const blogs = await req.db
-      .collection("blogs")
+    const blogs = await db
+      .collection<Blog>("blogs")
       .find()
       .skip(page * blogsPerPage)
       .limit(blogsPerPage)
@@ -81,29 +87,30 @@ export const getBlogs = async (req, res, next) => {
       .toArray();
 
     const authorIds = blogs.map((blog) => blog.authorId);
-    const users = await req.db
+    const users = (await db
       .collection("users")
       .find({ _id: { $in: authorIds } })
-      .toArray();
+      .toArray()) as User[];
 
     const userMap = users.reduce((acc, user) => {
       acc[user._id.toString()] = user;
       return acc;
-    }, {});
+    }, {} as Record<string, User>);
 
     const blogsWithAuthors = blogs.map((blog) => {
-      const author = userMap[blog.authorId.toString()] || {
+      const author: User = userMap[blog.authorId.toString()] || {
+        _id: new ObjectId(),
+        uid: "",
+        email: "",
         name: "Unknown user",
+        createdAt: new Date(),
       };
-      let authorImageBuffer = null;
-      let authorImageMimetype = null;
-      if (author.buffer && author.mimetype) {
-        authorImageMimetype = author.mimetype;
-        authorImageBuffer =
-          author.buffer._bsontype === "Binary"
-            ? Buffer.from(author.buffer.buffer).toString("base64")
-            : Buffer.from(author.buffer, "base64").toString("base64");
-      }
+
+      const authorImageMimetype = author.mimetype || null;
+      const authorImageBuffer = author.buffer
+        ? author.buffer.toString("base64")
+        : null;
+
       return {
         ...blog,
         author: author.name,
@@ -112,7 +119,7 @@ export const getBlogs = async (req, res, next) => {
       };
     });
 
-    const totalBlogs = await req.db.collection("blogs").countDocuments();
+    const totalBlogs = await db.collection("blogs").countDocuments();
     const totalPages = Math.ceil(totalBlogs / blogsPerPage);
 
     res.json({ blogsWithAuthors, totalPages });
@@ -123,12 +130,13 @@ export const getBlogs = async (req, res, next) => {
 };
 
 // GET /blogs/:id/comments
-export const getCommentsForBlog = async (req, res, next) => {
+export const getCommentsForBlog: ReqResNext = async (req, res, next) => {
   const { id } = req.params;
 
   try {
-    const comments = await req.db
-      .collection("comments")
+    const db = req.db!;
+    const comments = await db
+      .collection<Comment>("comments")
       .find({ blogId: new ObjectId(id) })
       .sort({ timeStamp: -1 })
       .toArray();
@@ -139,8 +147,8 @@ export const getCommentsForBlog = async (req, res, next) => {
     ];
 
     // Fetch user info for commenters
-    const users = await req.db
-      .collection("users")
+    const users = await db
+      .collection<User>("users")
       .find({ _id: { $in: commenterIds } })
       .toArray();
 
@@ -148,22 +156,21 @@ export const getCommentsForBlog = async (req, res, next) => {
     const userMap = users.reduce((acc, user) => {
       acc[user._id.toString()] = user;
       return acc;
-    }, {});
+    }, {} as Record<string, User>);
 
     const commentsWithDetails = comments.map((comment) => {
       const commenter = userMap[comment.commenterId.toString()] || {
+        _id: new ObjectId(),
+        uid: "",
+        email: "",
         name: "Unknown user",
+        createdAt: new Date(),
       };
-      let commenterImageBuffer = null;
-      let commenterImageMimetype = null;
-      if (commenter.buffer && commenter.mimetype) {
-        commenterImageMimetype = commenter.mimetype;
-        commenterImageBuffer =
-          commenter.buffer._bsontype === "Binary"
-            ? Buffer.from(commenter.buffer.buffer).toString("base64")
-            : Buffer.from(commenter.buffer, "base64");
-      }
 
+      const commenterImageMimetype = commenter.mimetype || null;
+      const commenterImageBuffer = commenter.buffer
+        ? commenter.buffer.toString("base64")
+        : null;
       return {
         ...comment,
         commenterName: commenter.name,
@@ -180,26 +187,27 @@ export const getCommentsForBlog = async (req, res, next) => {
 };
 
 // GET /comments/:id/replies
-export const getRepliesForComment = async (req, res, next) => {
+export const getRepliesForComment: ReqResNext = async (req, res, next) => {
   const { id } = req.params;
 
-  if (!ObjectId.isValid(id)) {
+  if (!id || !ObjectId.isValid(id)) {
     return constErr(400, "Invalid comment ID", next);
   }
 
   try {
-    const replies = await req.db
-      .collection("replies")
+    const db = req.db!;
+    const replies = await db
+      .collection<Reply>("replies")
       .find({ commentId: new ObjectId(id) })
       .sort({ timeStamp: -1 })
       .toArray();
 
     // Gather unique replierIds
-    const replierIds = [...new Set(replies.map((r) => r.replierId.toString()))];
+    const replierIds = [...new Set(replies.map((r) => r.replierId))];
 
     // Fetch users in batch
-    const users = await req.db
-      .collection("users")
+    const users = await db
+      .collection<User>("users")
       .find({ _id: { $in: replierIds } })
       .toArray();
 
@@ -207,19 +215,22 @@ export const getRepliesForComment = async (req, res, next) => {
     const userMap = users.reduce((acc, user) => {
       acc[user._id.toString()] = user;
       return acc;
-    }, {});
+    }, {} as Record<string, User>);
 
     const repliesWithDetails = replies.map((reply) => {
-      const replier = userMap[reply.replierId] || { name: "Unknown user" };
-      let replierImageBuffer = null;
-      let replierImageMimetype = null;
-      if (replier.buffer && replier.mimetype) {
-        replierImageMimetype = replier.mimetype;
-        replierImageBuffer =
-          replier.buffer._bsontype === "Binary"
-            ? Buffer.from(replier.buffer.buffer).toString("base64")
-            : Buffer.from(replier.buffer, "base64").toString("base64");
-      }
+      const replier = userMap[reply.replierId.toString()] || {
+        _id: new ObjectId(),
+        uid: "",
+        email: "",
+        name: "Unknown user",
+        createdAt: new Date(),
+      };
+
+      const replierImageMimetype = replier.mimetype;
+      const replierImageBuffer = replier.buffer
+        ? replier.buffer.toString("base64")
+        : null;
+
       return {
         ...reply,
         replierName: replier.name,
@@ -235,18 +246,19 @@ export const getRepliesForComment = async (req, res, next) => {
   }
 };
 
-//  /account/data/:id
-export const accountData = async (req, res, next) => {
+// GET /account/data/:id
+export const accountData: ReqResNext = async (req, res, next) => {
   const { id } = req.params;
 
-  if (!ObjectId.isValid(id)) {
+  if (!id || !ObjectId.isValid(id)) {
     console.error("Invalid client id, BSONError");
     return constErr(400, "Please login or signup again", next);
   }
 
   try {
-    const user = await req.db
-      .collection("users")
+    const db = req.db!;
+    const user = await db
+      .collection<User>("users")
       .findOne({ _id: new ObjectId(id) });
 
     if (!user) {
@@ -254,16 +266,8 @@ export const accountData = async (req, res, next) => {
       return constErr(404, "User not found", next);
     }
 
-    let imageBuffer = null;
-    let imageMimetype = null;
-    if (user.buffer && user.mimetype) {
-      imageMimetype = user.mimetype;
-      if (user.buffer._bsontype === "Binary") {
-        imageBuffer = Buffer.from(user.buffer.buffer).toString("base64");
-      } else {
-        imageBuffer = Buffer.from(user.buffer, "base64");
-      }
-    }
+    const imageBuffer = user.mimetype || null;
+    const imageMimetype = user?.buffer ? user.buffer.toString("base64") : null;
 
     const data = {
       buffer: imageBuffer,
@@ -274,6 +278,6 @@ export const accountData = async (req, res, next) => {
     res.json(data);
   } catch (error) {
     console.error("Error sending data", error);
-    constErr(500, error, next);
+    return constErr(500, "Error sending account data", next);
   }
 };
