@@ -1,13 +1,6 @@
 import { Router } from "express";
-// import upload from "../uploadConfig.js";
-// import {
-//   getBlogs,
-//   getCommentsForBlog,
-//   getRepliesForComment,
-//   welcome,
-//   yourBlogs,
-//   accountData,
-// } from "../controllers/getControllers.js";
+import { authenticate } from "../middleware/auth.js";
+import { getBlogs, getCommentsForBlog, getRepliesForComment, welcome, yourBlogs, accountData, } from "../controllers/getControllers.js";
 // import {
 //   interaction,
 //   accountUpdate,
@@ -24,19 +17,18 @@ import { Router } from "express";
 //   accountDelete,
 //   deleteReply,
 // } from "../controllers/deleteController.js";
-// import { authenticate } from "../middleware/auth.js";
 const route = Router();
 // //  create
 // route.post("/add-blog/:id", addBlog);
 // route.post("/add-comment/:id", addComment);
 // route.post("/add-reply/:id", addReply);
 // //  read
-// route.get("/", welcome);
-// route.get("/your-blogs/:id", yourBlogs);
-// route.get("/blogs/:id", getBlogs);
-// route.get("/blogs/:id/comments", getCommentsForBlog);
-// route.get("/comments/:id/replies", getRepliesForComment);
-// route.get("/account/data/:id", authenticate, accountData);
+route.get("/", welcome);
+route.get("/your-blogs/:id", yourBlogs);
+route.get("/blogs/:id", getBlogs);
+route.get("/blogs/:id/comments", getCommentsForBlog);
+route.get("/comments/:id/replies", getRepliesForComment);
+route.get("/account/data/:id", authenticate, accountData);
 // //  update
 // route.patch("/account/update/:id", upload.single("image"), accountUpdate);
 // route.patch("/interaction/:postId", interaction);

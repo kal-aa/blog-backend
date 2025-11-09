@@ -23,7 +23,7 @@ export const signupHandler: ReqResNext = async (req, res, next) => {
     let user = await db.collection("users").findOne({ email: emailLower });
 
     if (!user) {
-      const newUser: User = {
+      const newUser: Omit<User, "_id"> = {
         uid,
         email: emailLower,
         name: name || optName,
@@ -60,7 +60,7 @@ export const loginHandler: ReqResNext = async (req, res, next) => {
     let user = await db.collection("users").findOne({ email: emailLower });
 
     if (!user) {
-      const newUser: User = {
+      const newUser: Omit<User, "_id"> = {
         uid,
         email: emailLower,
         name,
