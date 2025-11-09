@@ -1,1 +1,0 @@
-{"version":3,"file":"uploadConfig.js","sourceRoot":"","sources":["../src/uploadConfig.ts"],"names":[],"mappings":"AAAA,OAAO,MAAyB,MAAM,QAAQ,CAAC;AAE/C,MAAM,OAAO,GAAkB,MAAM,CAAC,aAAa,EAAE,CAAC;AACtD,MAAM,MAAM,GAAG,MAAM,CAAC;IACpB,OAAO,EAAE,OAAO;IAChB,MAAM,EAAE,EAAE,QAAQ,EAAE,CAAC,GAAG,IAAI,GAAG,IAAI,EAAE;CACtC,CAAC,CAAC;AAEH,eAAe,MAAM,CAAC"}
