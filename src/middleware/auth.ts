@@ -1,5 +1,5 @@
 import { adminAuth } from "../config/firebase.js";
-import constErr from "../reUses/constErr.js";
+import constErr from "../utility/constErr.js";
 import { ReqResNext } from "../types/miscellaneous.js";
 
 export const authenticate: ReqResNext = async (req, res, next) => {

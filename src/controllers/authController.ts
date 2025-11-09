@@ -1,4 +1,4 @@
-import constErr from "../reUses/constErr.js";
+import constErr from "../utility/constErr.js";
 import { ReqResNext, User } from "../types/miscellaneous.js";
 
 export const signupHandler: ReqResNext = async (req, res, next) => {

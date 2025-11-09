@@ -9,11 +9,11 @@ import {
   yourBlogs,
   accountData,
 } from "../controllers/getControllers.js";
-// import {
-//   interaction,
-//   accountUpdate,
-//   patchBlog,
-// } from "../controllers/patchControllers.js";
+import {
+  interaction,
+  //   accountUpdate,
+  //   patchBlog,
+} from "../controllers/patchControllers.js";
 // import {
 //   addBlog,
 //   addReply,
@@ -43,7 +43,7 @@ route.get("/account/data/:id", authenticate, accountData);
 
 // //  update
 // route.patch("/account/update/:id", upload.single("image"), accountUpdate);
-// route.patch("/interaction/:postId", interaction);
+route.patch("/interaction/:postId", interaction);
 // route.patch("/patch-blog/:id", patchBlog);
 
 // //  delete

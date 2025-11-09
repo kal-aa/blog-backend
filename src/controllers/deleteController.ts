@@ -1,5 +1,5 @@
 import { ObjectId } from "mongodb";
-import constErr from "../reUses/constErr.js";
+import constErr from "../utility/constErr.js";
 import { ReqResNext } from "../types/miscellaneous.js";
 
 // DELETE delete-comment/:id
