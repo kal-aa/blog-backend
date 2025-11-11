@@ -1,5 +1,6 @@
 import { Router } from "express";
 import upload from "../uploadConfig.js";
+import { authenticate } from "../middleware/auth.js";
 import {
   getBlogs,
   getCommentsForBlog,
@@ -24,16 +25,15 @@ import {
   accountDelete,
   deleteReply,
 } from "../controllers/deleteController.js";
-import { authenticate } from "../middleware/auth.js";
 
 const route = Router();
 
-//  create
+//  CREATE
 route.post("/add-blog/:id", addBlog);
 route.post("/add-comment/:id", addComment);
 route.post("/add-reply/:id", addReply);
 
-//  read
+//  READ
 route.get("/", welcome);
 route.get("/your-blogs/:id", yourBlogs);
 route.get("/blogs/:id", getBlogs);
@@ -41,12 +41,12 @@ route.get("/blogs/:id/comments", getCommentsForBlog);
 route.get("/comments/:id/replies", getRepliesForComment);
 route.get("/account/data/:id", authenticate, accountData);
 
-//  update
+//  UPDATE
 route.patch("/account/update/:id", upload.single("image"), accountUpdate);
 route.patch("/interaction/:postId", interaction);
 route.patch("/patch-blog/:id", patchBlog);
 
-//  delete
+//  DELETE
 route.delete("/account/delete/:id", accountDelete);
 route.delete("/delete-blog/:id", deleteBlog);
 route.delete("/delete-comment/:id", deleteComment);
