@@ -127,19 +127,19 @@ export const interaction: ReqResNext = async (req, res, next) => {
 export const patchBlog: ReqResNext = async (req, res, next) => {
   const { blogId, title, body } = req.body;
   const { id } = req.params;
+  const cleanBody = body?.trim();
+  const cleanTitle = title?.trim();
 
-  if (
-    !title ||
-    !body ||
-    !ObjectId.isValid(blogId) ||
-    !id ||
-    !ObjectId.isValid(id)
-  ) {
-    return constErr(400, "Missing or invalid blogId, id, title, or body", next);
+  if (!id || !blogId || !cleanTitle || !cleanBody) {
+    console.error("Invalid or missing ID, blogId, title, or body");
+    return constErr(400, "Invalid or missing ID, blogId, title, or body", next);
   }
 
+  if (!ObjectId.isValid(blogId) || !ObjectId.isValid(id))
+    return constErr(400, "Invalid blogId or user ID", next);
+
   try {
-    const result = validateContent(title + ". " + body, "blog");
+    const result = validateContent(`${cleanTitle}. ${cleanBody}`, "blog");
 
     if (!result.valid) {
       console.error("inappropriate content detected");
@@ -152,7 +152,7 @@ export const patchBlog: ReqResNext = async (req, res, next) => {
         _id: new ObjectId(blogId),
         authorId: new ObjectId(id),
       },
-      { $set: { title, body, updatedAt: new Date() } }
+      { $set: { title: cleanTitle, body: cleanBody, updatedAt: new Date() } }
     );
 
     if (updateResult.matchedCount === 0)
@@ -161,7 +161,7 @@ export const patchBlog: ReqResNext = async (req, res, next) => {
     res.status(200).json({ message: "Blog updated successfully." });
   } catch (error) {
     console.error("Error updating blog", error);
-    return next(new Error("An error occurred while updating the blog"));
+    return constErr(500, "Server error occurred during blog update", next);
   }
 };
 

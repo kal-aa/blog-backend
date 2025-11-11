@@ -138,7 +138,7 @@ export const getCommentsForBlog: ReqResNext = async (req, res, next) => {
     const comments = await db
       .collection<Comment>("comments")
       .find({ blogId: new ObjectId(id) })
-      .sort({ timeStamp: -1 })
+      .sort({ createdAt: -1 })
       .toArray();
 
     // Extract unique commenter IDs
@@ -199,7 +199,7 @@ export const getRepliesForComment: ReqResNext = async (req, res, next) => {
     const replies = await db
       .collection<Reply>("replies")
       .find({ commentId: new ObjectId(id) })
-      .sort({ timeStamp: -1 })
+      .sort({ createdAt: -1 })
       .toArray();
 
     // Gather unique replierIds

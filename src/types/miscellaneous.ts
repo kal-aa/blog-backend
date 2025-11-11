@@ -55,7 +55,7 @@ export interface Comment {
   comment: string;
   likes: ObjectId[];
   dislikes: ObjectId[];
-  timeStamp: Date;
+  createdAt: Date;
   buffer?: Buffer;
   mimetype?: string;
 }
@@ -66,7 +66,7 @@ export interface Reply {
   blogId: ObjectId;
   replierId: ObjectId;
   reply: string;
-  timeStamp: Date;
+  createdAt: Date;
   buffer?: Buffer;
   mimetype?: string;
 }
