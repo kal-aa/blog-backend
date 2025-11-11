@@ -11,8 +11,8 @@ import {
 } from "../controllers/getControllers.js";
 import {
   interaction,
-  //   accountUpdate,
-  //   patchBlog,
+  accountUpdate,
+  patchBlog,
 } from "../controllers/patchControllers.js";
 // import {
 //   addBlog,
@@ -42,9 +42,9 @@ route.get("/comments/:id/replies", getRepliesForComment);
 route.get("/account/data/:id", authenticate, accountData);
 
 // //  update
-// route.patch("/account/update/:id", upload.single("image"), accountUpdate);
+route.patch("/account/update/:id", upload.single("image"), accountUpdate);
 route.patch("/interaction/:postId", interaction);
-// route.patch("/patch-blog/:id", patchBlog);
+route.patch("/patch-blog/:id", patchBlog);
 
 // //  delete
 route.delete("/account/delete/:id", accountDelete);

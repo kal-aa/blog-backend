@@ -1,13 +1,10 @@
 import { ObjectId } from "mongodb";
 import constErr from "../utility/constErr.js";
-import isInvalidEmailSyntax from "../utility/isInvalidEmailSyntax.js";
-import hashPassword from "../utility/hashPassword.js";
 import isInvalidName from "../utility/isInvalidName.js";
-import { Filter } from "bad-words";
 import { validateContent } from "../utility/validateContent.js";
-import { Blog, Comment, ReqResNext } from "../types/miscellaneous.js";
+import { Blog, Comment, ReqResNext, User } from "../types/miscellaneous.js";
 
-//  like dislike comment view reply
+// PATCH /interaction/:postId
 export const interaction: ReqResNext = async (req, res, next) => {
   const { action, userId } = req.body;
   const { postId } = req.params;
@@ -126,136 +123,123 @@ export const interaction: ReqResNext = async (req, res, next) => {
   }
 };
 
-//  patch-blog/:id
-// export const patchBlog = async (req, res, next) => {
-//   const data = req.body;
-//   const { id } = req.params;
+// PATCH patch-blog/:id
+export const patchBlog: ReqResNext = async (req, res, next) => {
+  const { blogId, title, body } = req.body;
+  const { id } = req.params;
 
-//   try {
-//     const result = validateContent(`${data.title}, ${data.body}`, "blog");
+  if (
+    !title ||
+    !body ||
+    !ObjectId.isValid(blogId) ||
+    !id ||
+    !ObjectId.isValid(id)
+  ) {
+    return constErr(400, "Missing or invalid blogId, id, title, or body", next);
+  }
 
-//     if (!result.valid) {
-//       console.error("inappropriate content");
-//       return constErr(400, result.mssg, next);
-//     }
+  try {
+    const result = validateContent(title + ". " + body, "blog");
 
-//     if (!ObjectId.isValid(data.blogId) && !ObjectId.isValid(id)) {
-//       return constErr(400, "Please login or signup again", next);
-//     }
+    if (!result.valid) {
+      console.error("inappropriate content detected");
+      return constErr(400, result.mssg, next);
+    }
 
-//     await req.db.collection("blogs").updateOne(
-//       {
-//         _id: ObjectId.createFromHexString(data.blogId),
-//         authorId: ObjectId.createFromHexString(id),
-//       },
-//       { $set: { title: data.title, body: data.body, updatedAt: new Date() } }
-//     );
+    const db = req.db!;
+    const updateResult = await db.collection("blogs").updateOne(
+      {
+        _id: new ObjectId(blogId),
+        authorId: new ObjectId(id),
+      },
+      { $set: { title, body, updatedAt: new Date() } }
+    );
 
-//     res.end();
-//   } catch (error) {
-//     console.error("Error updating blog", error);
-//     return next(new Error("An error occurred while updating the blog"));
-//   }
-// };
+    if (updateResult.matchedCount === 0)
+      return constErr(404, "Blog not found or you are not the author", next);
 
-//  /account/update/:id
-// export const accountUpdate = async (req, res, next) => {
-//   const { id } = req.params;
-//   const { name, removeImage } = req.body;
+    res.status(200).json({ message: "Blog updated successfully." });
+  } catch (error) {
+    console.error("Error updating blog", error);
+    return next(new Error("An error occurred while updating the blog"));
+  }
+};
 
-//   try {
-//     let imageBuffer = null;
-//     let imageMimetype = null;
+// PATCH /account/update/:id
+export const accountUpdate: ReqResNext = async (req, res, next) => {
+  const { id } = req.params;
+  const { name, removeImage } = req.body;
 
-//     if (req.file) {
-//       imageBuffer = req.file.buffer;
-//       imageMimetype = req.file.mimetype;
-//     }
+  const db = req.db!;
 
-//     if (isInvalidName(name, next)) {
-//       return;
-//     }
+  if (!id || isInvalidName(name, next)) return;
+  const userObjectId = new ObjectId(id);
 
-//     const user = await req.db
-//       .collection("users")
-//       .findOne({ _id: new ObjectId(id) });
+  try {
+    const user = await db
+      .collection<User>("users")
+      .findOne({ _id: userObjectId });
 
-//     if (!user) {
-//       console.error("User not found");
-//       return constErr(404, "User not found", next);
-//     }
+    if (!user) {
+      console.error("User not found");
+      return constErr(404, "User not found", next);
+    }
 
-//     //  Check if data is already up-to-date
-//     const filteredUser = {
-//       name: user.name,
-//     };
-//     const sanitizedUser = {
-//       name: name,
-//     };
+    const imageBuffer = req.file?.buffer || null;
+    const imageMimetype = req.file?.mimetype || null;
 
-//     if (imageBuffer && imageMimetype) {
-//       filteredUser.buffer = user.buffer;
-//       filteredUser.mimetype = user.mimetype;
-//       sanitizedUser.buffer = imageBuffer;
-//       sanitizedUser.mimetype = imageMimetype;
-//     }
+    // Determine update conditions
+    const initialImageEmpty = !user.buffer || user.buffer.length === 0;
+    const userRemovedImg = removeImage === "true";
+    const userWantsToRemoveImage = !initialImageEmpty && userRemovedImg;
+    const userAddedNewImage = !!imageBuffer;
+    const userChangedName = name && user.name !== name;
 
-//     const isEqual = Object.keys(sanitizedUser).every((key) => {
-//       if (key === "buffer") {
-//         const filteredBuffer = filteredUser.buffer
-//           ? Buffer.isBuffer(filteredUser.buffer)
-//             ? filteredUser.buffer
-//             : Buffer.from(filteredUser.buffer, "base64")
-//           : Buffer.alloc(0);
+    const shouldUpdate =
+      userChangedName || userWantsToRemoveImage || userAddedNewImage;
 
-//         const sanitizedBuffer = sanitizedUser.buffer || Buffer.alloc(0);
+    if (!shouldUpdate)
+      return constErr(
+        400,
+        "No changes were made. Your data is already up to date.",
+        next
+      );
 
-//         return Buffer.compare(filteredBuffer, sanitizedBuffer) === 0;
-//       }
-//       return filteredUser[key] === sanitizedUser[key];
-//     });
+    const updateFields: Partial<User> = {
+      name,
+      updatedAt: new Date(),
+    };
 
-//     const initialImageEmpty = !user.buffer || user.buffer.length === 0;
-//     const userRemovedImg = removeImage === "true";
+    let updateQuery: Record<string, any> = {};
 
-//     const userWantsToRemoveImage = !initialImageEmpty && userRemovedImg;
-//     const userAddedNewImage = !initialImageEmpty && imageBuffer;
-//     const userChangedTestInfo = !isEqual;
+    if (userAddedNewImage)
+      updateQuery = {
+        $set: {
+          ...updateFields,
+          buffer: imageBuffer,
+          mimetype: imageMimetype,
+        },
+      };
+    else if (userWantsToRemoveImage)
+      updateQuery = {
+        $unset: {
+          buffer: "",
+          mimetype: "",
+        },
+        $set: updateFields,
+      };
+    else updateQuery = { $set: updateFields };
 
-//     const shouldUpdate =
-//       userChangedTestInfo || userWantsToRemoveImage || userAddedNewImage;
+    const updateResult = await db
+      .collection<User>("users")
+      .updateOne({ _id: new ObjectId(id) }, updateQuery);
 
-//     if (!shouldUpdate) {
-//       console.log("Already up-to-date");
-//       return res.status(200).json({
-//         mssg: "No changes were made. Your data is already up to date.",
-//       });
-//     }
+    if (updateResult.modifiedCount === 0)
+      return constErr(400, "Failed to update the user", next);
 
-//     const updateFields = {
-//       name: name,
-//       updatedAt: new Date(),
-//     };
-
-//     if ((imageBuffer && imageMimetype) || userRemovedImg) {
-//       (updateFields.buffer = imageBuffer),
-//         (updateFields.mimetype = imageMimetype);
-//     }
-
-//     const update = await req.db.collection("users").updateOne(
-//       { _id: new ObjectId(id) },
-//       {
-//         $set: updateFields,
-//       }
-//     );
-
-//     if (update.modifiedCount > 0) {
-//       return res.status(201).json({ mssg: "User updated successfully" });
-//     } else {
-//       return constErr(400, "Failed to update the user", next);
-//     }
-//   } catch (error) {
-//     console.error("Error updating user:", error);
-//     return next(new Error());
-//   }
-// };
+    res.status(200).json({ mssg: "User updated successfully" });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    return next(new Error("An error occurred while updating the user"));
+  }
+};

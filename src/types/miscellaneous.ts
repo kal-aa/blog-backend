@@ -32,8 +32,8 @@ export interface User {
   name: string;
   createdAt: Date;
   updatedAt?: Date;
-  buffer?: Buffer;
-  mimetype?: string;
+  buffer?: Buffer | null;
+  mimetype?: string | null;
 }
 
 export interface Blog {
