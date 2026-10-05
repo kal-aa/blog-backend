@@ -12,20 +12,27 @@ if (!uri || !dbName) {
 let client: MongoClient | null = null;
 let dbConnection: Db | null = null;
 
-type DbCallback = (error?: Error) => void;
-
-export const connectToDb = async (cb: DbCallback) => {
-  if (dbConnection) return cb();
-
-  try {
-    client = await MongoClient.connect(uri);
-    dbConnection = client.db(dbName);
-    cb();
-  } catch (error: any) {
-    console.error(error);
-    return cb(error);
+export const connectToDb = async (): Promise<Db> => {
+  if (dbConnection) {
+    return dbConnection;
   }
+
+try {
+  client = new MongoClient(uri);
+
+  await client.connect();
+
+  dbConnection = client.db(dbName);
+
+  console.log("Database connected");
+
+  return dbConnection;
+} catch (error) {
+  console.error("Failed to connect to MongoDB:", error);
+  throw error;
+}
 };
+
 export const getDb = (): Db => {
   if (!dbConnection) {
     throw new Error("Database not connected");

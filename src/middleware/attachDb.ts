@@ -1,9 +1,9 @@
-import { getDb } from "../db.js";
+import { connectToDb } from "../db.js";
 import { ReqResNext } from "../types/miscellaneous.js";
 
-export const attachDb: ReqResNext = (req, res, next) => {
+export const attachDb: ReqResNext = async (req, res, next) => {
   try {
-    req.db = getDb();
+    req.db = await connectToDb();
     next();
   } catch (err) {
     console.error("Database not initialized", err);
