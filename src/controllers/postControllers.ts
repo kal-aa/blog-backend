@@ -1,7 +1,7 @@
 import { ObjectId } from "mongodb";
 import constErr from "../utility/constErr.js";
 import { validateContent } from "../utility/validateContent.js";
-import { ReqResNext } from "../types/miscellaneous.js";
+import { ReqResNext, User } from "../types/miscellaneous.js";
 
 // POST add-blog/:id
 export const addBlog: ReqResNext = async (req, res, next) => {
@@ -33,7 +33,7 @@ export const addBlog: ReqResNext = async (req, res, next) => {
       return constErr(
         404,
         "Oops! user does not exist, please signup and come back again!",
-        next
+        next,
       );
     }
 
@@ -74,13 +74,21 @@ export const addComment: ReqResNext = async (req, res, next) => {
   try {
     const result = validateContent(cleanComment, "comment");
 
-    if (!result.valid) {
-      console.error(`Inappropriate content: ${result.mssg}`);
-      return constErr(400, result.mssg, next);
+    if (!result.valid) return constErr(400, result.mssg, next);
+
+    const db = req.db!;
+    const commenterId = new ObjectId(id);
+
+    const commenter = await db
+      .collection<User>("users")
+      .findOne({ _id: commenterId });
+
+    if (!commenter) {
+      return constErr(404, "Comment author not found", next);
     }
 
     const commentData = {
-      commenterId: new ObjectId(id),
+      commenterId,
       blogId: new ObjectId(blogId),
       comment: cleanComment,
       likes: [],
@@ -88,8 +96,19 @@ export const addComment: ReqResNext = async (req, res, next) => {
       createdAt: new Date(),
     };
 
-    await req.db!.collection("comments").insertOne(commentData);
-    res.status(201).json({ newComment: commentData });
+    const insertResult = await req
+      .db!.collection("comments")
+      .insertOne(commentData);
+
+    const newComment = {
+      ...commentData,
+      _id: insertResult.insertedId,
+      commenterName: commenter.name || "Unknown user",
+      buffer: commenter.buffer ? commenter.buffer.toString("base64") : null,
+      mimetype: commenter.mimetype,
+    };
+
+    res.status(201).json({ newComment });
   } catch (error) {
     console.error("Error posting a comment", error);
     return constErr(500, "Server error occured during posting a comment", next);
@@ -117,10 +136,16 @@ export const addReply: ReqResNext = async (req, res, next) => {
   try {
     const result = validateContent(cleanReply, "reply");
 
-    if (!result.valid) {
-      console.error("inappropriate content");
-      return constErr(400, result.mssg, next);
-    }
+    if (!result.valid) return constErr(400, result.mssg, next);
+
+    const db = req.db!;
+    const replierId = new ObjectId(id);
+
+    const replier = await db
+      .collection<User>("users")
+      .findOne({ _id: replierId });
+
+    if (!replier) return constErr(404, "Reply author not found", next);
 
     const replyData = {
       commentId: new ObjectId(commentId),
@@ -130,8 +155,17 @@ export const addReply: ReqResNext = async (req, res, next) => {
       createdAt: new Date(),
     };
 
-    await req.db!.collection("replies").insertOne(replyData);
-    res.status(201).json({ newReply: replyData });
+    const insertResult = await db.collection("replies").insertOne(replyData);
+
+    const newReply = {
+      ...replyData,
+      _id: insertResult.insertedId,
+      replierName: replier.name || "Unknown user",
+      buffer: replier.buffer ? replier.buffer.toString("base64") : null,
+      mimetype: replier.mimetype,
+    };
+
+    res.status(201).json({ newReply });
   } catch (error) {
     console.error("Server error posting a reply", error);
     return constErr(500, "Server error occured during posting a reply", next);
